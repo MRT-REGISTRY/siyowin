@@ -2,20 +2,21 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Cell,
 } from 'recharts';
 import { apiGet } from '@/utils/api';
 import { SubjectRecord, SubjectResultsResponse } from '@/types';
 
 type ProgressPoint = { month: string; score: number; classAvg: number };
-type SubjectProgressPoint = { month: string; score: number; classAvg: number };
+type SubjectProgressPoint = { label: string; score: number; examDate: string; totalMarks: number };
 
 interface Props {
   data: ProgressPoint[];
@@ -28,32 +29,16 @@ const formatMonthRange = (chartData: ProgressPoint[]) =>
     : 'Recent months';
 
 const buildSubjectProgress = (results: SubjectResultsResponse['results']): SubjectProgressPoint[] => {
-  const statsByMonth = new Map<string, { total: number; count: number }>();
-
-  results.forEach((result) => {
-    if (result.isAbsent || result.marksObtained === null) return;
-    const date = new Date(result.examDate);
-    if (Number.isNaN(date.getTime())) return;
-
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const stats = statsByMonth.get(monthKey) ?? { total: 0, count: 0 };
-    stats.total += Number(result.marksObtained);
-    stats.count += 1;
-    statsByMonth.set(monthKey, stats);
-  });
-
-  const entries = Array.from(statsByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  if (!entries.length) return [];
-
-  return entries.map(([monthKey, stats]) => {
-    const [year, month] = monthKey.split('-');
-    const label = new Date(Number(year), Number(month) - 1, 1).toLocaleString('en-GB', { month: 'short' });
-    return {
-      month: label,
-      score: stats.count ? Math.round(stats.total / stats.count) : 0,
-      classAvg: 0,
-    };
-  });
+  return results
+    .filter((result) => !result.isAbsent && result.marksObtained !== null)
+    .slice(0, 5)
+    .map((result) => ({
+      label: result.examTitle,
+      score: Number(result.marksObtained),
+      examDate: result.examDate,
+      totalMarks: result.totalMarks ?? 100,
+    }))
+    .sort((a, b) => String(b.examDate).localeCompare(String(a.examDate)));
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -74,7 +59,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function ProgressChart({ data, subjects = [] }: Props) {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [subjectData, setSubjectData] = useState<ProgressPoint[] | null>(null);
+  const [subjectData, setSubjectData] = useState<SubjectProgressPoint[] | null>(null);
   const [loadingSubject, setLoadingSubject] = useState(false);
   const [subjectError, setSubjectError] = useState('');
 
@@ -124,20 +109,22 @@ export default function ProgressChart({ data, subjects = [] }: Props) {
     };
   }, [selectedSubjectId]);
 
-  const chartData = selectedSubjectId ? subjectData ?? [] : data;
-  const rangeLabel = selectedSubject ? `${selectedSubject.name} · ${formatMonthRange(chartData)}` : formatMonthRange(chartData);
-  const latest = chartData[chartData.length - 1]?.score ?? 0;
-  const first = chartData[0]?.score ?? latest;
+  const chartData = selectedSubjectId ? subjectData ?? [] : [];
+  const rangeLabel = selectedSubject ? `${selectedSubject.name} · 5 most recent marks` : '5 most recent marks';
+  const latest = chartData[0]?.score ?? 0;
+  const first = chartData[chartData.length - 1]?.score ?? latest;
   const diff = latest - first;
   const trend = diff > 0 ? 'Improving' : diff < 0 ? 'Declining' : 'Stable';
   const trendColor = diff > 0 ? '#22C55E' : diff < 0 ? '#EF4444' : '#F59E0B';
-  const showClassAverage = false;
+  const maxMarks = 100;
+
+  const barColors = ['#D9232D', '#E85D3F', '#F59E0B', '#F97316', '#FB7185'];
 
   return (
     <section className="sd-chart-section">
       <div className="sd-section-header">
         <div>
-          <h2 className="sd-section-title">📈 Progress Trend</h2>
+          <h2 className="sd-section-title">📊 Recent Marks</h2>
           <p className="sd-section-sub">{rangeLabel}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -170,16 +157,16 @@ export default function ProgressChart({ data, subjects = [] }: Props) {
 
       <div className="sd-chart-wrap">
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="label"
               tick={{ fontSize: 12, fill: '#9CA3AF' }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              domain={[0, 100]}
+              domain={[0, maxMarks]}
               tick={{ fontSize: 12, fill: '#9CA3AF' }}
               axisLine={false}
               tickLine={false}
@@ -187,37 +174,21 @@ export default function ProgressChart({ data, subjects = [] }: Props) {
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-            <Line
-              type="monotone"
-              dataKey="score"
-              name={selectedSubject?.name ?? 'Subject Score'}
-              stroke="#D9232D"
-              strokeWidth={3}
-              dot={{ r: 5, fill: '#D9232D', strokeWidth: 0 }}
-              activeDot={{ r: 7 }}
-            />
-            {showClassAverage && (
-              <Line
-                type="monotone"
-                dataKey="classAvg"
-                name="Class Average"
-                stroke="#E2E8F0"
-                strokeWidth={2}
-                strokeDasharray="5 4"
-                dot={false}
-                activeDot={{ r: 5, fill: '#94A3B8' }}
-              />
-            )}
-          </LineChart>
+            <Bar dataKey="score" name={selectedSubject?.name ?? 'Marks'} radius={[8, 8, 0, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${entry.label}-${index}`} fill={barColors[index % barColors.length]} />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Monthly summary pills */}
       <div className="sd-chart-pills">
         {chartData.map((d, i) => (
-          <div key={d.month} className={`sd-chart-pill ${i === chartData.length - 1 ? 'sd-chart-pill-active' : ''}`}>
-            <span className="sd-pill-month">{d.month}</span>
-            <span className="sd-pill-score">{d.score}%</span>
+          <div key={`${d.label}-${i}`} className={`sd-chart-pill ${i === 0 ? 'sd-chart-pill-active' : ''}`}>
+            <span className="sd-pill-month">{d.label}</span>
+            <span className="sd-pill-score">{d.score}/100</span>
           </div>
         ))}
       </div>

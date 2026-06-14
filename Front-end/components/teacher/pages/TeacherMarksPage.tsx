@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, Plus, Edit3, Trash2, X, Filter, Calendar, FileText, CheckCircle, Pencil } from 'lucide-react';
+import { Search, ChevronLeft, Plus, Edit3, Trash2, X, Filter, Calendar, FileText, CheckCircle, Pencil, Copy } from 'lucide-react';
 import { apiPost, apiRequest, getStoredToken, apiGet } from '@/utils/api';
 import { useLanguage } from '@/components/LanguageProvider';
 
@@ -45,6 +45,7 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
   const [formExamType, setFormExamType] = useState('');
   const [formStudentId, setFormStudentId] = useState('');
   const [formMarkValue, setFormMarkValue] = useState('');
+  const [generatedPortalLink, setGeneratedPortalLink] = useState('');
   
   const [notice, setNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -55,6 +56,19 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
       setFormExamName(`${typeLabel} ${formExamDate}`);
     }
   }, [formExamType, formExamDate, showAddAssignmentModal, examTypes]);
+
+  // Auto-generate Portal Link when assignment is selected
+  useEffect(() => {
+    if (selectedAssignment && selectedClassId) {
+      const link = buildPortalLink({
+        subjectId: selectedClassId,
+        examType: selectedAssignment.examType,
+        examName: selectedAssignment.examName,
+        examDate: selectedAssignment.examDate,
+      });
+      setGeneratedPortalLink(link);
+    }
+  }, [selectedAssignment, selectedClassId]);
 
   const selectedClass = useMemo(() => {
     return selectedClassId ? subjects.find(s => s.id === selectedClassId) : null;
@@ -140,6 +154,38 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
   const showNoticeMessage = (text: string, type: 'success' | 'error') => {
     setNotice({ text, type });
     setTimeout(() => setNotice(null), 3000);
+  };
+
+  const buildPortalLink = (assignment: { subjectId: string; examType: string; examName: string; examDate: string }) => {
+    if (typeof window === 'undefined') return '';
+
+    const params = new URLSearchParams({
+      subjectId: assignment.subjectId,
+      examType: assignment.examType,
+      examName: assignment.examName,
+      examDate: assignment.examDate,
+    });
+
+    return `${window.location.origin}/marksheet?${params.toString()}`;
+  };
+
+  const copyTextToClipboard = async (text: string, successMessage: string) => {
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      showNoticeMessage(successMessage, 'success');
+    } catch {
+      showNoticeMessage(isSinhala ? 'සබැඳිය පිටපත් කිරීමට නොහැකි විය.' : 'Unable to copy the link.', 'error');
+    }
+  };
+
+  const copyPortalLink = async (assignment: { subjectId: string; examType: string; examName: string; examDate: string }) => {
+    const link = buildPortalLink(assignment);
+    if (!link) return;
+
+    await copyTextToClipboard(link, isSinhala ? 'පෝටල් සබැඳිය පිටපත් කරන ලදී.' : 'Portal link copied.');
+    setGeneratedPortalLink(link);
   };
 
   const openEditAssignmentModal = (a: { examType: string; examName: string; examDate: string }) => {
@@ -244,8 +290,16 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
         examDate: formExamDate,
       }),
     }).then(() => {
+      const portalLink = buildPortalLink({
+        subjectId: selectedClassId,
+        examType: formExamType,
+        examName: formExamName.trim(),
+        examDate: formExamDate,
+      });
+      setGeneratedPortalLink(portalLink);
       // Refresh so dbExams is updated from the server
       onRefresh();
+      showNoticeMessage(isSinhala ? 'පැවරුම සාර්ථකව නිර්මාණය කරන ලදී. සබැඳිය පිටපත් කළ හැක.' : 'Assignment created. The portal link is ready to copy.', 'success');
     }).catch(err => {
       showNoticeMessage((isSinhala ? 'DB සේවාදායකය සමඟ සම්බන්ධ කිරීම අසාර්ථකයි: ' : 'Failed to save to DB: ') + err.message, 'error');
     });
@@ -449,6 +503,13 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
                 </span>
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={(e) => { e.stopPropagation(); copyPortalLink({ subjectId: selectedClassId || '', examType: a.examType, examName: a.examName, examDate: a.examDate }); }}
+                    className="p-1.5 text-slate-400 hover:text-[#1B3A8C] hover:bg-blue-50 rounded-lg transition"
+                    title={isSinhala ? 'සබැඳිය පිටපත් කරන්න' : 'Copy portal link'}
+                  >
+                    <Copy size={14} />
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); openEditAssignmentModal(a); }}
                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                     title={isSinhala ? 'සංස්කරණය කරන්න' : 'Edit'}
@@ -587,6 +648,22 @@ export default function TeacherMarksPage({ subjects, students, examTypes, dbExam
       {notice && (
         <div className={`p-4 rounded-xl text-sm font-bold shadow-sm ${notice.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
           {notice.text}
+        </div>
+      )}
+
+      {generatedPortalLink && (
+        <div className="sdp-card border border-[#1B3A8C]/15 bg-gradient-to-r from-[#F6F8FF] to-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#1B3A8C]">{isSinhala ? 'පෝටල් සබැඳිය' : 'Portal Link'}</p>
+            <p className="text-sm text-slate-600 break-all mt-1">{generatedPortalLink}</p>
+          </div>
+          <button
+            onClick={() => copyTextToClipboard(generatedPortalLink, isSinhala ? 'පෝටල් සබැඳිය පිටපත් කරන ලදී.' : 'Portal link copied.')}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-[#152C6A] transition-colors"
+          >
+            <Copy size={16} />
+            {isSinhala ? 'පිටපත් කරන්න' : 'Copy Link'}
+          </button>
         </div>
       )}
 

@@ -7,6 +7,7 @@ import adminRoutes from './routes/admin.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import healthRoutes from './routes/health.routes.js';
+import publicRoutes from './routes/public.routes.js';
 import teacherRoutes from './routes/teacher.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
@@ -38,6 +39,7 @@ app.use('/api', (_req, res, next) => {
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 app.use('/api/health', healthRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/teacher', teacherRoutes);

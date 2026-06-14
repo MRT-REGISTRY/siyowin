@@ -13,6 +13,7 @@ import {
 export const demoPassword = 'password123';
 const passwordHash = bcrypt.hashSync(demoPassword, 10);
 export const demoPasswordHash = passwordHash;
+const student123PasswordHash = bcrypt.hashSync('123', 10);
 
 export const users: Array<AuthUser & { passwordHash: string }> = [
   {
@@ -52,6 +53,16 @@ export const users: Array<AuthUser & { passwordHash: string }> = [
     role: 'super-admin',
     isActive: true,
     passwordHash,
+  },
+  {
+    id: 'user-student-123',
+    name: 'student1',
+    username: '123',
+    email: 'student1@siyowin.lk',
+    role: 'student',
+    studentId: 'st-123',
+    isActive: true,
+    passwordHash: student123PasswordHash,
   },
 ];
 
@@ -359,6 +370,35 @@ export const students: AdminStudent[] = [
     classId: '12-a-si',
     marks: [
       { subjectId: 'hist', subjectName: 'History', examType: 'term-test', examName: 'Term Test 2', examDate: '2026-05-18', mark: 87, note: 'Excellent recall' },
+    ],
+  },
+  {
+    id: 'st-5',
+    name: 'Test Student',
+    index: '2026-99-999',
+    dateOfBirth: '2011-07-07',
+    grade: 'Grade 11',
+    classId: '11-a-si',
+    parentName: 'Test Parent',
+    parentPhone: '+94 77 999 9999',
+    marks: [
+      { subjectId: 'math', subjectName: 'Mathematics', examType: 'quiz', examName: 'Assignment 1', examDate: '2026-05-10', mark: 85, note: 'Good work' },
+      { subjectId: 'math', subjectName: 'Mathematics', examType: 'quiz', examName: 'Assignment 2', examDate: '2026-05-12', mark: 88, note: 'Improved' },
+      { subjectId: 'eng', subjectName: 'English', examType: 'quiz', examName: 'Assignment 1', examDate: '2026-05-11', mark: 72, note: 'Needs practice' },
+    ],
+  },
+  {
+    id: 'st-123',
+    name: 'student1',
+    index: '123',
+    dateOfBirth: '2011-06-01',
+    grade: 'Grade 11',
+    classId: '11-a-si',
+    parentName: 'Parent One',
+    parentPhone: '+94 77 000 0000',
+    marks: [
+      { subjectId: 'math', subjectName: 'Mathematics', examType: 'assignment', examName: 'Assignment 6', examDate: '2026-05-13', mark: 76, note: 'Good attempt' },
+      { subjectId: 'math', subjectName: 'Mathematics', examType: 'assignment', examName: 'Assignment 5', examDate: '2026-05-11', mark: 82, note: 'Improved' },
     ],
   },
 ];

@@ -36,3 +36,9 @@ __v0_jsx-dev-runtime.ts
 .v0-trash/
 .vercel/
 next.user-config.*
+student's-marks-temporary/grade_10_students_data.csv
+.gitignore
+student's-marks-temporary/grade_11_students_data.csv
+student's-marks-temporary/grade_11_students_data.csv
+student's-marks-temporary/handle_duplicates.py
+student's-marks-temporary/grade_11_students_data.csv

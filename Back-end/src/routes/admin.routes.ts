@@ -460,4 +460,29 @@ router.post('/marks/bulk', validateBody(bulkMarksSchema), asyncHandler(async (re
   });
 }));
 
+router.patch('/users/:userId/promote', asyncHandler(async (req, res) => {
+  const userId = String(req.params.userId ?? '');
+  const user = await repo.findUserById(userId);
+
+  if (!user) {
+    res.status(404).json({ message: 'User not found.' });
+    return;
+  }
+
+  if (user.role !== 'teacher') {
+    res.status(400).json({ message: 'Only teachers can be promoted to admin.' });
+    return;
+  }
+
+  // Update user role to admin
+  const updatedUser = await repo.updateUserRole(userId, 'admin');
+
+  if (!updatedUser) {
+    res.status(404).json({ message: 'Failed to promote user.' });
+    return;
+  }
+
+  res.json({ user: updatedUser, message: `${updatedUser.name} has been promoted to admin.` });
+}));
+
 export default router;

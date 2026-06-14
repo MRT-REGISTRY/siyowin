@@ -108,11 +108,6 @@ export default function HeroSection({
         <ChevronRight size={32} />
       </button>
 
-      {/* Image Counter */}
-      <div className="absolute bottom-24 left-1/2 z-20 transform -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm md:bottom-28">
-        {currentImageIndex + 1} / {bgImages.length}
-      </div>
-
       {/* Bottom Wave Divider */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 overflow-hidden md:h-28">
         <svg

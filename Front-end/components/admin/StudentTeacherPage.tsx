@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { KeyRound, Plus, ShieldCheck, Trash2, UserPlus, Users, X } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck, Trash2, UserPlus, Users, X, Crown } from 'lucide-react';
 
 import { apiDelete, apiGet, apiPatch, apiPost, getStoredUser } from '@/utils/api';
 import { AdminClassOption, AdminRole, AdminStudent, AdminStudentClassOption, AdminTeacher, RegisteredUser, TeacherAssignment } from '@/types';
@@ -338,6 +338,26 @@ export default function StudentTeacherPage({ onNotice }: Props) {
         onNotice?.({ message: `Login ${user.username} deleted.`, variant: 'success' });
       })
       .catch((error) => onNotice?.({ message: error instanceof Error ? error.message : 'Login was not deleted.', variant: 'danger' }));
+  };
+
+  const promoteTeacherToAdmin = (user: RegisteredUser) => {
+    if (user.role !== 'teacher') {
+      onNotice?.({ message: 'Only teachers can be promoted to admin.', variant: 'danger' });
+      return;
+    }
+
+    if (!window.confirm(`Promote ${user.name} to admin? They will have full access to the admin panel.`)) return;
+
+    apiPatch(`/admin/users/${encodeURIComponent(user.id)}/promote`, {})
+      .then(() => {
+        setUsers((previous) =>
+          previous.map((item) =>
+            item.id === user.id ? { ...item, role: 'admin' } : item
+          )
+        );
+        onNotice?.({ message: `${user.name} has been promoted to admin.`, variant: 'success' });
+      })
+      .catch((error) => onNotice?.({ message: error instanceof Error ? error.message : 'Failed to promote user.', variant: 'danger' }));
   };
 
   const deleteStudent = (student: AdminStudent) => {
@@ -785,7 +805,18 @@ export default function StudentTeacherPage({ onNotice }: Props) {
                           {user.isActive === false ? 'Inactive' : 'Active'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right space-x-2 flex items-center justify-end">
+                        {user.role === 'teacher' && (
+                          <button
+                            type="button"
+                            onClick={() => promoteTeacherToAdmin(user)}
+                            className="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 transition hover:bg-amber-100"
+                            aria-label={`Promote ${user.name} to admin`}
+                            title="Promote to admin"
+                          >
+                            <Crown className="h-4 w-4" />
+                          </button>
+                        )}
                         <button type="button" onClick={() => deleteUser(user)} className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete login ${user.username}`}>
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -67,9 +67,12 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     return;
   }
 
-  const roleMatches = role === 'admin'
-    ? user.role === 'admin' || user.role === 'super-admin'
-    : !role || user.role === role;
+  // Allow teacher login for both teachers and admins/super-admins
+  const roleMatches = !role || role === 'student'
+    ? user.role === role
+    : role === 'teacher'
+      ? user.role === 'teacher' || user.role === 'admin' || user.role === 'super-admin'
+      : user.role === role;
 
   if (!roleMatches) {
     res.status(403).json({ message: `This account is not registered as ${role}.` });

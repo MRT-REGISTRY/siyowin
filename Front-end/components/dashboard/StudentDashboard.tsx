@@ -31,6 +31,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [latestModuleItems, setLatestModuleItems] = useState<SubjectModuleItem[]>([]);
+  const [latestResults, setLatestResults] = useState<any[]>([]);
   const [progress, setProgress] = useState<Array<{ month: string; score: number; classAvg: number }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,7 @@ export default function StudentDashboard() {
       profile: StudentProfile;
       subjects: ApiSubjectRecord[];
       latestModuleItems?: SubjectModuleItem[];
+      latestResults?: any[];
       progress: Array<{ month: string; score?: number; average?: number; classAvg?: number }>;
       homework: Array<any>;
     }>('/dashboard/student')
@@ -66,6 +68,7 @@ export default function StudentDashboard() {
         setProfile(data.profile);
         setSubjects(normalizeSubjects(data.subjects, data.homework));
         setLatestModuleItems(data.latestModuleItems ?? []);
+        setLatestResults((data as any).latestResults ?? []);
         setProgress(data.progress.map((item) => ({
           month: item.month,
           score: item.score ?? item.average ?? 0,
@@ -149,7 +152,7 @@ export default function StudentDashboard() {
               </div>
 
               <div className="sd-dashboard-overview">
-                <OverviewCards overview={overview} latestItems={latestModuleItems} onOpenSubject={openSubject} />
+                <OverviewCards overview={overview} latestItems={latestModuleItems} latestResults={latestResults} onOpenSubject={openSubject} />
               </div>
 
               <div className="sd-dashboard-subjects">

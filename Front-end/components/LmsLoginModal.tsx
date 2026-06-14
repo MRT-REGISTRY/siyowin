@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, GraduationCap, BookOpen, Eye, EyeOff, ArrowLeft, LogIn, ChevronRight, ShieldCheck } from 'lucide-react'
+import { X, GraduationCap, BookOpen, Eye, EyeOff, ArrowLeft, LogIn, ChevronRight } from 'lucide-react'
 import { getDashboardPathForRole, login } from '@/utils/api'
 
 // ── Siyowin brand colours (from logo) ────────────────────────────────
@@ -14,7 +14,7 @@ const BRAND = {
   orangeLight:'#fff7ed',
 }
 
-type Role = 'student' | 'teacher' | 'admin' | null
+type Role = 'student' | 'teacher' | null
 type Step = 'choose' | 'login'
 
 interface LmsLoginModalProps {
@@ -79,6 +79,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
       const loginPayload = role === 'student'
         ? { username: identifier, password, role }
         : { email: identifier, password, role }
+      
       const result = await login(loginPayload)
       window.localStorage.setItem('siyowin_token', result.token)
       window.localStorage.setItem('siyowin_user', JSON.stringify(result.user))
@@ -94,13 +95,11 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
   const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
   // Per-role colours
-  const roleColor = role === 'teacher' ? BRAND.navy : role === 'admin' ? BRAND.orange : BRAND.red
-  const roleLightBg = role === 'teacher' ? BRAND.navyLight : role === 'admin' ? BRAND.orangeLight : BRAND.redLight
+  const roleColor = role === 'teacher' ? BRAND.navy : BRAND.red
+  const roleLightBg = role === 'teacher' ? BRAND.navyLight : BRAND.redLight
   const roleGradient = role === 'teacher'
     ? `linear-gradient(135deg, ${BRAND.navy}, #2c55c7)`
-    : role === 'admin'
-      ? `linear-gradient(135deg, ${BRAND.orange}, ${BRAND.red})`
-      : `linear-gradient(135deg, ${BRAND.red}, ${BRAND.orange})`
+    : `linear-gradient(135deg, ${BRAND.red}, ${BRAND.orange})`
   const roleShadow = role === 'teacher'
     ? '0 10px 28px rgba(27,58,140,0.35)'
     : '0 10px 28px rgba(217,35,45,0.30)'
@@ -156,7 +155,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
             <p className="mt-1 text-xs text-gray-400">
               {step === 'choose'
                 ? 'Learning Management System'
-                : role === 'student' ? 'Student Portal' : role === 'teacher' ? 'Teacher Portal' : 'Admin Portal'}
+                : role === 'student' ? 'Student Portal' : 'Staff Portal'}
             </p>
           </div>
 
@@ -182,7 +181,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
               How would you like to sign in today?
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {/* Student */}
               <RoleCard
                 icon={<GraduationCap size={34} strokeWidth={1.4} />}
@@ -204,16 +203,6 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
                 accentColor="#2c55c7"
                 lightBg={BRAND.navyLight}
                 onClick={() => selectRole('teacher')}
-              />
-              <RoleCard
-                icon={<ShieldCheck size={34} strokeWidth={1.4} />}
-                label="Admin"
-                sublabel="Admin Portal"
-                description="Manage institute setup and access"
-                color={BRAND.orange}
-                accentColor={BRAND.red}
-                lightBg={BRAND.orangeLight}
-                onClick={() => selectRole('admin')}
               />
             </div>
 
@@ -247,10 +236,8 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
               <span className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold"
                 style={{ background: roleLightBg, color: roleColor }}>
                 {role === 'teacher'
-                  ? <><BookOpen size={13} strokeWidth={2} /> Teacher Sign In</>
-                  : role === 'admin'
-                    ? <><ShieldCheck size={13} strokeWidth={2} /> Admin Sign In</>
-                    : <><GraduationCap size={13} strokeWidth={2} /> Student Sign In</>}
+                  ? <><BookOpen size={13} strokeWidth={2} /> Staff Sign In</>
+                  : <><GraduationCap size={13} strokeWidth={2} /> Student Sign In</>}
               </span>
             </div>
 

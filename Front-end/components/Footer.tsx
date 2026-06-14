@@ -92,7 +92,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+          <div className="hidden sm:flex flex-col items-center text-center sm:items-start sm:text-left">
             <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
               {isSinhala ? 'ඉක්මන් සබැඳි' : 'Quick Links'}
             </h4>

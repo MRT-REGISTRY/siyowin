@@ -12,6 +12,7 @@ interface Props {
 
 export default function SubjectReportPage({ subject, onBack }: Props) {
   const [modules, setModules] = useState<ApiSubjectModule[]>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,12 +26,38 @@ export default function SubjectReportPage({ subject, onBack }: Props) {
     setModules([]);
     setExpandedModules([]);
 
-    apiGet<{ subjectId: string; modules: ApiSubjectModule[] }>(`/dashboard/subjects/${subject.id}/modules`)
-      .then((response) => {
+    Promise.all([
+      apiGet<{ subjectId: string; modules: ApiSubjectModule[] }>(`/dashboard/subjects/${subject.id}/modules`),
+      apiGet(`/dashboard/subjects/${subject.id}/results`).catch(() => ({ recentResults: [], results: [] })),
+    ])
+      .then(([response, resultResp]: any) => {
         if (!mounted) return;
         const nextModules = response.modules ?? [];
-        setModules(nextModules);
-        setExpandedModules(nextModules.slice(0, 2).map((module) => module.id));
+        const recentResults = (resultResp?.recentResults ?? resultResp?.results ?? []) as any[];
+        const nextModuleIds = new Set(nextModules.map((module) => module.id));
+
+        const resultModules = recentResults
+          .filter((r) => !r.isAbsent && r.marksObtained !== null)
+          .filter((r, index, all) => all.findIndex((candidate) => candidate.examId === r.examId) === index)
+          .map((r) => ({
+            id: `result-${r.examId}`,
+            title: r.examTitle,
+            items: [{
+              id: r.examId,
+              title: `${r.examTitle}: ${r.marksObtained}/${r.totalMarks ?? 100}`,
+              type: 'mark' as const,
+              createdAt: r.createdAt ?? r.examDate ?? null,
+            }],
+          }));
+
+        const mergedModules = [
+          ...nextModules,
+          ...resultModules.filter((module) => !nextModuleIds.has(module.id)),
+        ];
+
+        setModules(mergedModules);
+        setResults(recentResults);
+        setExpandedModules(mergedModules.slice(0, 3).map((module) => module.id));
       })
       .catch((fetchError) => {
         if (!mounted) return;
