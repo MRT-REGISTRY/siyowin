@@ -10,9 +10,6 @@ const navLinks = [
   { label: 'About', sinhalaLabel: 'අප ගැන', href: '/#about' },
   { label: 'Teachers', sinhalaLabel: 'ගුරුවරු', href: '/teachers' },
   { label: 'Timetable', sinhalaLabel: 'කාලසටහන්', href: '/#timetable' },
-  { label: 'Gallery', sinhalaLabel: 'ගැලරිය', href: '/#gallery' },
-  { label: 'News', sinhalaLabel: 'පුවත්', href: '/#news' },
-  { label: 'FAQ', sinhalaLabel: 'ප්‍රශ්න', href: '/#faq' },
   { label: 'Contact', sinhalaLabel: 'සම්බන්ධ වන්න', href: '/#contact' },
 ]
 
