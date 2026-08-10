@@ -85,14 +85,8 @@ const isMissingTable = (error: unknown) =>
   );
 
 const withFallback = async <T>(query: () => Promise<T>, fallback: () => T | Promise<T>) => {
-  if (!supabase) return fallback();
-
-  try {
-    return await query();
-  } catch (error) {
-    if (isMissingTable(error)) return fallback();
-    throw error;
-  }
+  if (!supabase) throw new Error('Supabase client is not initialized');
+  return await query();
 };
 
 // Here line this 'email' will contain either email or username

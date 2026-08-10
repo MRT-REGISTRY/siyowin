@@ -55,16 +55,20 @@ export default function HeroSection({
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      {/* Background Image with Overlay */}
-      <Image
-        src={selectedImage.src}
-        alt={selectedImage.alt}
-        fill
-        priority
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
-        className="object-cover"
-        quality={85}
-      />
+      {/* Background Images with Overlay */}
+      {bgImages.map((img, index) => (
+        <Image
+          key={img.id}
+          src={img.src}
+          alt={img.alt}
+          fill
+          priority={index === 0} // Only preload the first image aggressively
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
+          className={`object-cover transition-opacity duration-1000 ${
+            index === currentImageIndex % bgImages.length ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      ))}
 
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/40"></div>

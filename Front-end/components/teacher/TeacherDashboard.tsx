@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
+import { LogOut } from 'lucide-react';
 import DashboardSidebar from '../dashboard/DashboardSidebar';
 import DashboardNavbar from '../dashboard/DashboardNavbar';
 import TeacherOverviewPage from './pages/TeacherOverviewPage';
@@ -111,20 +112,28 @@ export default function TeacherDashboard() {
     };
   }, [teacher, isSinhala]);
 
-  return (
-    <div className="sd-root">
-      <DashboardSidebar
-        navItems={localizedNavItems}
-        activeNav={activeNav}
-        onNavChange={handleNavChange}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        profile={profile as any}
-      />
-      {sidebarOpen && (
-        <div className="sd-overlay" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
-      )}
+  function logout(event: ReactMouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+    localStorage.removeItem('siyowin_teacher_nav');
+    localStorage.removeItem('siyowin_teacher_class');
+    localStorage.removeItem('siyowin_user');
+    sessionStorage.clear();
+    window.location.href = '/login';
+  }
 
+  return (
+        <div className="sd-root">
+          <DashboardSidebar
+            navItems={localizedNavItems}
+            activeNav={activeNav}
+            onNavChange={handleNavChange}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            profile={profile as any}
+          />
+          {sidebarOpen && (
+            <div className="sd-overlay" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+          )}
       <div className="sd-main-wrapper">
         <DashboardNavbar
           onMenuToggle={() => setSidebarOpen(true)}
