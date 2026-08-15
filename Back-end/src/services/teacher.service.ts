@@ -148,6 +148,16 @@ export const teacherService = {
       studentCountByClassId.set(e.class_id, (studentCountByClassId.get(e.class_id) ?? 0) + 1);
     });
 
+    // Phase 2.1.5: Fetch fully-populated students for the assigned classes
+    // This is required for the TeacherMarksPage so the teacher can assign marks
+    let students: any[] = [];
+    if (assignedClassIds.length > 0) {
+      const studentPromises = assignedClassIds.map((classId) => repo.getStudents({ classId }));
+      const studentsArrays = await Promise.all(studentPromises);
+      const uniqueStudents = new Map(studentsArrays.flat().map((s) => [s.id, s]));
+      students = Array.from(uniqueStudents.values());
+    }
+
     return {
       teacher,
       assignments: teacher.assignments,
@@ -155,6 +165,7 @@ export const teacherService = {
         ...subject,
         studentCount: studentCountByClassId.get(subject.id) ?? 0,
       })),
+      students,
       examTypes: store.examTypes,
       dbExams,
       overview: {
