@@ -11,8 +11,8 @@ const slidesData = {
     { title: 'Learn Anytime,\nAnywhere', sub: 'Access all your lessons and resources online from any device.', cta: 'Get Started Today' },
   ],
   si: [
-    { title: 'ඕනෑම වේලාවක\nඉගෙනගන්න', sub: 'ඕනෑම උපකරණයකින් ඔබේ සියලු පාඩම් ලබා ගන්න.', cta: 'ආරම්භ කරන්න' },
-    { title: 'ඕනෑම වේලාවක\nඉගෙනගන්න', sub: 'ඕනෑම උපකරණයකින් ඔබේ සියලු පාඩම් ලබා ගන්න.', cta: 'ආරම්භ කරන්න' },
+    { title: 'වරදින්නෙ නැතිව\nඉගෙනගන්න', sub: 'අද මහන්සියෙන් ඉගෙන ගන්නා හැම මොහොතක්ම හෙට සැපවත් ජීවිතයකට ආයෝජනයක්!', cta: 'ආරම්භ කරන්න' },
+    { title: 'වරදින්නෙ නැතිව\nඉගෙනගන්න', sub: 'අද මහන්සියෙන් ඉගෙන ගන්නා හැම මොහොතක්ම හෙට සැපවත් ජීවිතයකට ආයෝජනයක්!', cta: 'ආරම්භ කරන්න' },
   ]
 }
 
@@ -74,13 +74,7 @@ export default function HeroSection({
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-16 max-w-7xl mx-auto">
         <div className="max-w-2xl mt-16 md:mt-0">
-          <div
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-white mb-6"
-            style={{ background: 'rgba(192,24,46,0.7)', border: '1px solid rgba(255,255,255,0.25)' }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            Siyowin Institute
-          </div>
+
           <h1
             className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-5 transition-all duration-500 whitespace-pre-line"
             key={active}
