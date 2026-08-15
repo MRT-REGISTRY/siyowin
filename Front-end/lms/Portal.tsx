@@ -1,13 +1,11 @@
-'use client';
-
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { apiGet, getStoredUser } from '@/utils/api';
-import LmsDashboard from './pages/LmsDashboard';
-import LmsClasses from './pages/LmsClasses';
-import LmsClassDetail from './pages/LmsClassDetail';
-import LmsMarks from './pages/LmsMarks';
-
-type View = { page: 'dashboard' | 'classes' | 'marks' } | { page: 'class-detail'; classId: string };
+import { useState } from 'react'
+import logoImg from '@/imports/logo.png'
+import { initialClasses, TEACHER_NAME, type ClassData } from './data'
+import type { View } from './types'
+import Dashboard from './Dashboard'
+import Classes from './Classes'
+import ClassDetail from './ClassDetail'
+import Marks from './Marks'
 
 function IconDashboard() {
   return (
@@ -47,73 +45,14 @@ const navItems = [
   { id: 'marks' as const, label: 'Marks', Icon: IconMarks },
 ]
 
-export default function TeacherDashboard() {
+export default function Portal({ onLogout }: { onLogout: () => void }) {
   const [view, setView] = useState<View>({ page: 'dashboard' })
-  
-  const [teacher, setTeacher] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const u = getStoredUser();
-      if (u && u.role === 'teacher') {
-        return { name: u.name };
-      }
-    }
-    return null;
-  });
-  const [overview, setOverview] = useState<any>(null);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
-  const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
-  const [examTypes, setExamTypes] = useState<any[]>([]);
-  const [dbExams, setDbExams] = useState<any[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [classes, setClasses] = useState<ClassData[]>(initialClasses)
 
-  const loadData = (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    apiGet<any>('/teacher/dashboard')
-      .then((data) => {
-        setTeacher(data.teacher);
-        setOverview(data.overview);
-        setSubjects(data.subjects || []);
-        setStudents(data.students || []);
-        setRecentAssignments(data.recentAssignments || []);
-        setExamTypes(data.examTypes || []);
-        setDbExams(data.dbExams || []);
-        setError('');
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Unable to load dashboard.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+  const navigate = (v: View) => setView(v)
 
-  const refreshData = () => loadData(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const navigate = (v: View) => {
-    setView(v);
-    if (v.page === 'class-detail') {
-      localStorage.setItem('siyowin_teacher_nav', 'class-detail');
-      localStorage.setItem('siyowin_teacher_class', v.classId);
-    } else {
-      localStorage.setItem('siyowin_teacher_nav', v.page);
-      localStorage.removeItem('siyowin_teacher_class');
-    }
-  }
-
-  function logout(event: ReactMouseEvent<HTMLButtonElement>): void {
-    event.preventDefault();
-    localStorage.removeItem('siyowin_teacher_nav');
-    localStorage.removeItem('siyowin_teacher_class');
-    localStorage.removeItem('siyowin_user');
-    sessionStorage.clear();
-    window.location.href = '/login';
+  const updateClass = (id: string, updater: (c: ClassData) => ClassData) => {
+    setClasses(prev => prev.map(c => (c.id === id ? updater(c) : c)))
   }
 
   const activeNav = view.page === 'class-detail' ? 'classes' : view.page
@@ -123,15 +62,15 @@ export default function TeacherDashboard() {
     if (view.page === 'classes') return 'My Classes'
     if (view.page === 'marks') return 'Marks'
     if (view.page === 'class-detail') {
-      const cls = subjects.find(c => c.id === view.classId)
-      return cls ? `${cls.grade} – ${cls.medium} – ${cls.name}` : 'Class'
+      const cls = classes.find(c => c.id === view.classId)
+      return cls ? `${cls.grade} – ${cls.language} – ${cls.subject}` : 'Class'
     }
     return ''
   })()
 
-  const initials = (teacher?.name || 'Teacher').split(' ')
-    .filter((w: string) => /^[A-Z]/.test(w))
-    .map((w: string) => w[0])
+  const initials = TEACHER_NAME.split(' ')
+    .filter(w => /^[A-Z]/.test(w))
+    .map(w => w[0])
     .join('')
     .slice(0, 2)
 
@@ -139,9 +78,12 @@ export default function TeacherDashboard() {
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* ── Sidebar ── */}
       <aside style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', background: '#0D2558' }}>
-        <div style={{ padding: '24px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/photos/logo.png" alt="Siyowin" style={{ height: 72, width: 'auto', objectFit: 'contain' }} />
-          <div style={{ marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <div style={{ padding: '20px 18px 14px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src={logoImg} alt="Siyowin" style={{ height: 38, width: 38, objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 17 }}>Siyowin</span>
+          </div>
+          <div style={{ marginTop: 6, fontSize: 10.5, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: 48 }}>
             Teacher Portal
           </div>
         </div>
@@ -174,7 +116,7 @@ export default function TeacherDashboard() {
 
         <div style={{ padding: '10px 10px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <button
-            onClick={logout}
+            onClick={onLogout}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
               borderRadius: 9, width: '100%', border: 'none', cursor: 'pointer',
@@ -227,51 +169,23 @@ export default function TeacherDashboard() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.03em',
             }}>
-              {initials || 'T'}
+              {initials}
             </div>
-            <span style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}>{teacher?.name || 'Teacher'}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}>{TEACHER_NAME}</span>
           </div>
         </header>
 
         {/* Page content */}
         <main style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          {loading && <p style={{ fontSize: 13, color: '#6B7280' }}>Loading dashboard...</p>}
-          {!loading && error && <p style={{ fontSize: 13, color: '#C0182E' }}>{error}</p>}
-          
-          {!loading && !error && view.page === 'dashboard' && (
-            <LmsDashboard 
-              overview={overview} 
-              recentAssignments={recentAssignments} 
-              dbExams={dbExams} 
-              students={students} 
-              subjects={subjects} 
+          {view.page === 'dashboard' && <Dashboard classes={classes} navigate={navigate} />}
+          {view.page === 'classes' && <Classes classes={classes} navigate={navigate} />}
+          {view.page === 'class-detail' && (
+            <ClassDetail
+              classData={classes.find(c => c.id === view.classId)!}
+              updateClass={updater => updateClass(view.classId, updater)}
             />
           )}
-          
-          {!loading && !error && view.page === 'classes' && (
-            <LmsClasses 
-              subjects={subjects} 
-              dbExams={dbExams} 
-              navigate={navigate} 
-            />
-          )}
-          
-          {!loading && !error && view.page === 'class-detail' && subjects.find(c => c.id === view.classId) && (
-            <LmsClassDetail
-              classData={subjects.find(c => c.id === view.classId)!}
-              students={students}
-            />
-          )}
-          
-          {!loading && !error && view.page === 'marks' && (
-            <LmsMarks 
-              subjects={subjects} 
-              students={students} 
-              examTypes={examTypes}
-              dbExams={dbExams} 
-              onRefresh={refreshData} 
-            />
-          )}
+          {view.page === 'marks' && <Marks classes={classes} updateClass={updateClass} />}
         </main>
       </div>
     </div>
