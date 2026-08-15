@@ -1,0 +1,10 @@
+{
+  "description": "This LMS platform offers a modern interface for students and parents, featuring teacher profiles, timetables, and easy access to information in both Sinhala and English.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

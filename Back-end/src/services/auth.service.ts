@@ -62,7 +62,22 @@ export const authService = {
     const signOptions: SignOptions = {
       expiresIn: env.jwtExpiresIn as SignOptions['expiresIn'],
     };
-    const token = jwt.sign({ sub: user.id, role: user.role }, env.jwtSecret, signOptions);
+
+    // Embed full user context so requireAuth never needs a DB lookup.
+    // Only one of teacherId/studentId will be set per login role:
+    //   teacher/admin login → teacherId = 'tch-xxx', studentId = null
+    //   student login       → studentId = 'st-xxx',  teacherId = null
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        role: user.role,
+        name: user.name,
+        teacherId: user.teacherId ?? null,
+        studentId: user.studentId ?? null,
+      },
+      env.jwtSecret,
+      signOptions,
+    );
 
     return {
       token,

@@ -40,264 +40,124 @@ const homeworkCompletionSchema = z.object({
 
 export const teacherController = {
   async getDashboard(req: Request, res: Response) {
-    try {
-      const result = await teacherService.getDashboard(req.user?.teacherId);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message === 'Teacher profile not found.') {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.getDashboard(req.user?.teacherId, req.context);
+    res.json(result);
   },
 
   async addMark(req: Request, res: Response) {
-    try {
-      const result = await teacherService.addMark(req.user?.teacherId, req.body);
-      res.status(result.action === 'created' ? 201 : 200).json(result);
-    } catch (error: any) {
-      if (error.message === 'Teacher profile not found.' || error.message === 'Student not found.') {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('manage marks for')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.addMark(req.user?.teacherId, req.body, req.context);
+    res.status(result.action === 'created' ? 201 : 200).json(result);
   },
 
   async addResource(req: Request, res: Response) {
-    try {
-      const result = await teacherService.addResource(req.user?.teacherId, req.body);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.addResource(req.user?.teacherId, req.body, req.context);
+    res.status(201).json(result);
   },
 
   async addTopic(req: Request, res: Response) {
-    try {
-      const result = await teacherService.addTopic(req.user?.teacherId, req.body);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.addTopic(req.user?.teacherId, req.body, req.context);
+    res.status(201).json(result);
   },
 
   async deleteResource(req: Request, res: Response) {
-    try {
-      const { classId, resourceId } = req.params;
-      if (!classId || !resourceId) {
-        res.status(400).json({ message: 'classId and resourceId are required.' });
-        return;
-      }
-      const result = await teacherService.deleteResource(req.user?.teacherId, String(classId), String(resourceId));
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { classId, resourceId } = req.params;
+    if (!classId || !resourceId) {
+      res.status(400).json({ message: 'classId and resourceId are required.' });
+      return;
     }
+    const result = await teacherService.deleteResource(req.user?.teacherId, String(classId), String(resourceId), req.context);
+    res.json(result);
   },
 
   async deleteTopic(req: Request, res: Response) {
-    try {
-      const { classId, moduleId } = req.params;
-      if (!classId || !moduleId) {
-        res.status(400).json({ message: 'classId and moduleId are required.' });
-        return;
-      }
-      const result = await teacherService.deleteTopic(req.user?.teacherId, String(classId), String(moduleId));
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { classId, moduleId } = req.params;
+    if (!classId || !moduleId) {
+      res.status(400).json({ message: 'classId and moduleId are required.' });
+      return;
     }
+    const result = await teacherService.deleteTopic(req.user?.teacherId, String(classId), String(moduleId), req.context);
+    res.json(result);
   },
 
   async getHomework(req: Request, res: Response) {
-    try {
-      const { classId } = req.params;
-      if (!classId) {
-        res.status(400).json({ message: 'classId is required.' });
-        return;
-      }
-      const result = await teacherService.getHomework(req.user?.teacherId, String(classId));
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { classId } = req.params;
+    if (!classId) {
+      res.status(400).json({ message: 'classId is required.' });
+      return;
     }
+    const result = await teacherService.getHomework(req.user?.teacherId, String(classId), req.context);
+    res.json(result);
   },
 
   async addHomework(req: Request, res: Response) {
-    try {
-      const result = await teacherService.addHomework(req.user?.teacherId, req.user?.id, req.body);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.addHomework(req.user?.teacherId, req.user?.id, req.body, req.context);
+    res.status(201).json(result);
   },
 
   async completeHomework(req: Request, res: Response) {
-    try {
-      const result = await teacherService.completeHomework(req.user?.teacherId, req.user?.id, req.body);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
-    }
+    const result = await teacherService.completeHomework(req.user?.teacherId, req.user?.id, req.body, req.context);
+    res.json(result);
   },
 
   async deleteHomework(req: Request, res: Response) {
-    try {
-      const { classId, homeworkId } = req.params;
-      if (!classId || !homeworkId) {
-        res.status(400).json({ message: 'classId and homeworkId are required.' });
-        return;
-      }
-      const result = await teacherService.deleteHomework(req.user?.teacherId, String(classId), String(homeworkId));
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { classId, homeworkId } = req.params;
+    if (!classId || !homeworkId) {
+      res.status(400).json({ message: 'classId and homeworkId are required.' });
+      return;
     }
+    const result = await teacherService.deleteHomework(req.user?.teacherId, String(classId), String(homeworkId), req.context);
+    res.json(result);
   },
 
   async getStudentProgress(req: Request, res: Response) {
-    try {
-      const { studentId } = req.params;
-      if (!studentId) {
-        res.status(400).json({ message: 'studentId is required.' });
-        return;
-      }
-      const result = await teacherService.getStudentProgress(req.user?.teacherId, String(studentId));
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else if (error.message.includes('assigned grades and classes')) {
-        res.status(403).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { studentId } = req.params;
+    if (!studentId) {
+      res.status(400).json({ message: 'studentId is required.' });
+      return;
     }
+    const result = await teacherService.getStudentProgress(req.user?.teacherId, String(studentId), req.context);
+    res.json(result);
   },
 
   async deleteMark(req: Request, res: Response) {
-    try {
-      const { studentId, subjectId, examType, examName, examDate } = req.body;
-      if (!studentId || !subjectId || !examType || !examName) {
-        res.status(400).json({ message: 'studentId, subjectId, examType, and examName are required.' });
-        return;
-      }
-      const result = await teacherService.deleteMark(req.user?.teacherId, req.body);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { studentId, subjectId, examType, examName } = req.body;
+    if (!studentId || !subjectId || !examType || !examName) {
+      res.status(400).json({ message: 'studentId, subjectId, examType, and examName are required.' });
+      return;
     }
+    const result = await teacherService.deleteMark(req.user?.teacherId, req.body, req.context);
+    res.json(result);
   },
 
   async createAssignment(req: Request, res: Response) {
-    try {
-      const { subjectId, examType, examName, examDate } = req.body;
-      if (!subjectId || !examType || !examName || !examDate) {
-        res.status(400).json({ message: 'subjectId, examType, examName, and examDate are required.' });
-        return;
-      }
-      const result = await teacherService.createAssignment(req.user?.teacherId, req.body);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { subjectId, examType, examName, examDate } = req.body;
+    if (!subjectId || !examType || !examName || !examDate) {
+      res.status(400).json({ message: 'subjectId, examType, examName, and examDate are required.' });
+      return;
     }
+    const result = await teacherService.createAssignment(req.user?.teacherId, req.body, req.context);
+    res.status(201).json(result);
   },
 
   async updateAssignmentMarks(req: Request, res: Response) {
-    try {
-      const { subjectId, oldExamName, newExamName } = req.body;
-      if (!subjectId || !oldExamName || !newExamName) {
-        res.status(400).json({ message: 'subjectId, oldExamName, and newExamName are required.' });
-        return;
-      }
-      const result = await teacherService.updateAssignmentMarks(req.user?.teacherId, req.body);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { subjectId, oldExamName, newExamName } = req.body;
+    if (!subjectId || !oldExamName || !newExamName) {
+      res.status(400).json({ message: 'subjectId, oldExamName, and newExamName are required.' });
+      return;
     }
+    const result = await teacherService.updateAssignmentMarks(req.user?.teacherId, req.body, req.context);
+    res.json(result);
   },
 
   async deleteAssignmentMarks(req: Request, res: Response) {
-    try {
-      const { subjectId, examName } = req.body;
-      if (!subjectId || !examName) {
-        res.status(400).json({ message: 'subjectId and examName are required.' });
-        return;
-      }
-      const result = await teacherService.deleteAssignmentMarks(req.user?.teacherId, req.body);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message.includes('not found')) {
-        res.status(404).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error.' });
-      }
+    const { subjectId, examName } = req.body;
+    if (!subjectId || !examName) {
+      res.status(400).json({ message: 'subjectId and examName are required.' });
+      return;
     }
-  }
+    const result = await teacherService.deleteAssignmentMarks(req.user?.teacherId, req.body, req.context);
+    res.json(result);
+  },
 };
 
 export { teacherMarkSchema, resourceSchema, topicSchema, homeworkSchema, homeworkCompletionSchema };

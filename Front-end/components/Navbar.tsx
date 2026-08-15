@@ -8,138 +8,145 @@ import { useLanguage } from './LanguageProvider'
 const navLinks = [
   { label: 'Home', sinhalaLabel: 'මුල් පිටුව', href: '/' },
   { label: 'About', sinhalaLabel: 'අප ගැන', href: '/#about' },
-  { label: 'Teachers', sinhalaLabel: 'ගුරුවරු', href: '/teachers' },
-  { label: 'Timetable', sinhalaLabel: 'කාලසටහන්', href: '/#timetable' },
+  { label: 'Teachers', sinhalaLabel: 'ගුරුවරුන්', href: '/teachers' },
+  { label: 'Timetable', sinhalaLabel: 'කාල සටහන', href: '/#timetable' },
   { label: 'Contact', sinhalaLabel: 'සම්බන්ධ වන්න', href: '/#contact' },
 ]
 
 export default function Navbar() {
-  const [isOpen,    setIsOpen]    = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  
   const { isSinhala, toggleLanguage } = useLanguage()
 
-  // Listen for the Hero LMS button custom event
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   useEffect(() => {
     const handler = () => setShowLogin(true)
     window.addEventListener('open-lms-login', handler)
     return () => window.removeEventListener('open-lms-login', handler)
   }, [])
 
+  const closeMenu = () => setMobileOpen(false)
+
   return (
     <>
-      <nav className="fixed left-0 right-0 top-0 z-50 border-b border-white/20 bg-white/85 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+        style={{
+          background: scrolled ? 'rgba(255,255,255,0.97)' : 'transparent',
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          boxShadow: scrolled ? '0 2px 24px rgba(20,54,125,0.10)' : 'none',
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center" onClick={closeMenu}>
+            <img src="/photos/logo.png" alt="Siyowin Logo" className="h-16 md:h-20 w-auto object-contain py-1" />
+          </Link>
 
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <img src="/photos/logo.png" alt="Siyowin Logo" className="h-16 w-auto" />
-            </div>
-
-            {/* ── Desktop Menu ── */}
-            <div className="hidden items-center gap-0.5 md:flex">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="group relative px-3 py-1.5 text-sm font-semibold text-blue-700 transition-colors duration-200 hover:text-blue-900"
-                >
-                  {isSinhala ? link.sinhalaLabel : link.label}
-                  {/* Animated underline */}
-                  <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-blue-500 transition-all duration-300 ease-out group-hover:w-4/5" />
-                </Link>
-              ))}
-
-              <button
-                type="button"
-                onClick={toggleLanguage}
-                className="ml-2 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50"
+          {/* Desktop Nav */}
+          <div className="hidden lg:flex items-center gap-7">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-sm font-medium transition-colors duration-200"
+                style={{ color: scrolled ? '#374151' : 'rgba(255,255,255,0.9)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#C0182E')}
+                onMouseLeave={e => (e.currentTarget.style.color = scrolled ? '#374151' : 'rgba(255,255,255,0.9)')}
               >
-                {isSinhala ? 'English' : 'සිංහල'}
-              </button>
+                {isSinhala ? link.sinhalaLabel : link.label}
+              </Link>
+            ))}
 
-              {/* LMS Button */}
-              <button
-                onClick={() => setShowLogin(true)}
-                className="ml-4 rounded-full border-2 border-red-700 px-5 py-1.5 text-sm font-bold text-red-700 transition-all duration-300 hover:bg-red-700 hover:text-white hover:shadow-md active:scale-95"
-              >
-                {isSinhala ? 'LMS පිවිසුම' : 'LMS LOGIN'}
-              </button>
-            </div>
-
-            {/* ── Hamburger (mobile) ── */}
             <button
-              onClick={() => setIsOpen((p) => !p)}
-              aria-label={isOpen ? 'Close menu' : 'Open menu'}
-              className="relative flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg p-1.5 text-blue-700 transition-colors duration-200 hover:bg-blue-50 md:hidden"
+              onClick={toggleLanguage}
+              className="text-sm font-semibold px-4 py-1.5 rounded-full border-2 transition-all duration-200"
+              style={{
+                borderColor: scrolled ? '#14367D' : 'rgba(255,255,255,0.6)',
+                color: scrolled ? '#14367D' : '#fff',
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget
+                el.style.background = '#14367D'
+                el.style.color = '#fff'
+                el.style.borderColor = '#14367D'
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget
+                el.style.background = 'transparent'
+                el.style.color = scrolled ? '#14367D' : '#fff'
+                el.style.borderColor = scrolled ? '#14367D' : 'rgba(255,255,255,0.6)'
+              }}
             >
-              <span
-                className="block h-[2px] w-5 rounded-full bg-current transition-all duration-300 ease-[cubic-bezier(0.25,1,0.35,1)]"
-                style={{ transform: isOpen ? 'translateY(7px) rotate(45deg)' : 'none' }}
-              />
-              <span
-                className="block h-[2px] w-5 rounded-full bg-current transition-all duration-300 ease-[cubic-bezier(0.25,1,0.35,1)]"
-                style={{ opacity: isOpen ? 0 : 1, transform: isOpen ? 'scaleX(0)' : 'none' }}
-              />
-              <span
-                className="block h-[2px] w-5 rounded-full bg-current transition-all duration-300 ease-[cubic-bezier(0.25,1,0.35,1)]"
-                style={{ transform: isOpen ? 'translateY(-7px) rotate(-45deg)' : 'none' }}
-              />
+              {isSinhala ? 'English' : 'සිංහල'}
+            </button>
+
+            <button
+              onClick={() => setShowLogin(true)}
+              className="text-sm font-semibold px-5 py-2 rounded-lg text-white transition-all duration-200"
+              style={{ background: '#C0182E' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#9B0F22')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#C0182E')}
+            >
+              {isSinhala ? 'LMS පිවිසුම' : 'LMS Login'}
             </button>
           </div>
+
+          {/* Mobile Hamburger */}
+          <button className="lg:hidden p-2" onClick={() => setMobileOpen((o) => !o)}>
+            <div className="flex flex-col gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="block w-6 h-0.5 transition-all"
+                  style={{ background: scrolled ? '#14367D' : '#fff' }}
+                />
+              ))}
+            </div>
+          </button>
         </div>
 
-        {/* ── Mobile Menu ── */}
+        {/* Mobile menu */}
         <div
-          className="overflow-hidden md:hidden"
-          style={{
-            maxHeight: isOpen ? '600px' : '0px',
-            transition: 'max-height 420ms cubic-bezier(0.25, 1, 0.35, 1)',
-          }}
+          className="lg:hidden overflow-hidden transition-all duration-300"
+          style={{ maxHeight: mobileOpen ? '400px' : '0', background: 'rgba(255,255,255,0.98)' }}
         >
-          <div className="border-t border-blue-100 bg-white/95 px-4 pb-6 pt-4 backdrop-blur-md">
-            <div className="flex flex-col items-center gap-1">
-              {navLinks.map((link, i) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="group relative w-full px-4 py-2.5 text-center text-base font-semibold text-blue-700 transition-colors duration-200 hover:text-blue-900"
-                  style={{
-                    opacity: isOpen ? 1 : 0,
-                    transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
-                    transition: `opacity 350ms ease ${i * 40}ms, transform 350ms ease ${i * 40}ms, color 200ms`,
-                  }}
-                >
-                  {isSinhala ? link.sinhalaLabel : link.label}
-                  <span className="absolute bottom-1.5 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-blue-400 transition-all duration-300 group-hover:w-1/3" />
-                </Link>
-              ))}
-
+          <div className="px-5 py-4 flex flex-col gap-4 border-t border-gray-100">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={closeMenu}
+                className="text-gray-700 text-sm font-medium text-left hover:text-[#C0182E] transition-colors w-full block"
+              >
+                {isSinhala ? link.sinhalaLabel : link.label}
+              </Link>
+            ))}
+            <div className="flex gap-3 pt-2">
               <button
-                type="button"
-                onClick={() => { setIsOpen(false); toggleLanguage() }}
-                className="mt-3 w-44 rounded-full border border-blue-200 py-2 text-sm font-bold text-blue-700 transition-all duration-300 hover:bg-blue-50 active:scale-95"
-                style={{
-                  opacity: isOpen ? 1 : 0,
-                  transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
-                  transition: `opacity 350ms ease ${navLinks.length * 40}ms, transform 350ms ease ${navLinks.length * 40}ms`,
+                onClick={() => {
+                  toggleLanguage()
+                  closeMenu()
                 }}
+                className="text-sm font-semibold px-4 py-1.5 rounded-full border-2 border-[#14367D] text-[#14367D]"
               >
                 {isSinhala ? 'English' : 'සිංහල'}
               </button>
-
-              {/* LMS Login — mobile */}
               <button
-                onClick={() => { setIsOpen(false); setShowLogin(true) }}
-                className="mt-3 w-44 rounded-full border-2 border-red-700 py-2 text-sm font-bold text-red-700 transition-all duration-300 hover:bg-red-700 hover:text-white active:scale-95"
-                style={{
-                  opacity: isOpen ? 1 : 0,
-                  transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
-                  transition: `opacity 350ms ease ${navLinks.length * 40}ms, transform 350ms ease ${navLinks.length * 40}ms`,
+                onClick={() => {
+                  setShowLogin(true)
+                  closeMenu()
                 }}
+                className="bg-[#C0182E] text-white text-sm font-semibold px-5 py-2 rounded-lg"
               >
-                {isSinhala ? 'LMS පිවිසුම' : 'LMS LOGIN'}
+                {isSinhala ? 'LMS පිවිසුම' : 'LMS Login'}
               </button>
             </div>
           </div>

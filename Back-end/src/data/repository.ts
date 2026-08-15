@@ -1187,7 +1187,7 @@ export const repo = {
       if (resultError) throw resultError;
 
       const { data: enrollments, error: enrollmentError } = await supabase!
-        .from('enrollments')
+        .from('student_enrollments')
         .select('student_id,class_id')
         .eq('student_id', studentId);
       if (enrollmentError) throw enrollmentError;
@@ -1345,27 +1345,77 @@ export const repo = {
 
   async getStudents(params: { grade?: string; classId?: string; query?: string }) {
     return withFallback(async () => {
-      const [{ data, error }, classes, marksByStudentId, enrollmentsByStudentId] = await Promise.all([
-        supabase!
+      const classes = await this.getClasses();
+      const classById = new Map(classes.map((classItem) => [classItem.id, classItem]));
+
+      let primaryClassIds: string[] = [];
+      if (params.classId) {
+        primaryClassIds = [params.classId];
+      } else if (params.grade) {
+        primaryClassIds = classes.filter(c => c.grade === params.grade).map(c => c.id);
+      }
+
+      let studentIdsFromEnrollments: string[] = [];
+      if (primaryClassIds.length > 0) {
+        const { data: enrollments } = await supabase!
+          .from('student_enrollments')
+          .select('student_id')
+          .in('class_id', primaryClassIds)
+          .eq('status', 'active');
+        studentIdsFromEnrollments = (enrollments ?? []).map((e) => e.student_id);
+      }
+
+      let query1 = supabase!
         .from('students')
         .select('id,name,index_number,date_of_birth,class_id,parent_name,parent_phone,created_at')
-        .order('created_at', { ascending: false }),
-        this.getClasses(),
-        getMarksByStudentId(),
-        getActiveEnrollmentsByStudentId(),
+        .order('created_at', { ascending: false });
+
+      let query2 = supabase!
+        .from('students')
+        .select('id,name,index_number,date_of_birth,class_id,parent_name,parent_phone,created_at')
+        .order('created_at', { ascending: false });
+
+      if (primaryClassIds.length > 0) {
+        query1 = query1.in('class_id', primaryClassIds);
+      } else if (params.grade) {
+        query1 = query1.eq('id', 'non-existent-id-to-force-empty'); 
+      }
+
+      if (studentIdsFromEnrollments.length > 0) {
+        query2 = query2.in('id', studentIdsFromEnrollments);
+      }
+
+      if (params.query) {
+        const normalized = params.query.trim();
+        query1 = query1.or(`name.ilike.%${normalized}%,index_number.ilike.%${normalized}%`);
+        query2 = query2.or(`name.ilike.%${normalized}%,index_number.ilike.%${normalized}%`);
+      }
+
+      const promises = [query1];
+      if (studentIdsFromEnrollments.length > 0) {
+        promises.push(query2);
+      }
+
+      const results = await Promise.all(promises);
+      const allErrors = results.map(r => r.error).filter(Boolean);
+      if (allErrors.length > 0) throw allErrors[0];
+
+      const allData = results.flatMap(r => r.data ?? []);
+      const uniqueStudentRows = Array.from(new Map(allData.map(s => [s.id, s])).values());
+      const studentIds = uniqueStudentRows.map(s => s.id);
+
+      const [marksByStudentId, enrollmentsByStudentId] = await Promise.all([
+        getMarksByStudentId(studentIds),
+        getActiveEnrollmentsByStudentId(studentIds),
       ]);
-      if (error) throw error;
-      const classById = new Map(classes.map((classItem) => [classItem.id, classItem]));
-      const students = uniqueBy((data ?? []).map((student) =>
+
+      const students = uniqueBy(uniqueStudentRows.map((student) =>
         mapStudentWithData(student, classById, marksByStudentId.get(student.id) ?? [], enrollmentsByStudentId.get(student.id) ?? []),
       ), (student) => student.index.toLowerCase());
-      const normalized = params.query?.trim().toLowerCase() ?? '';
-      return students.filter((student) => {
-        const matchesGrade = !params.grade || student.grade === params.grade || student.enrollments?.some((enrollment) => classById.get(enrollment.classId)?.grade === params.grade);
-        const matchesClass = !params.classId || student.classId === params.classId || student.enrollments?.some((enrollment) => enrollment.classId === params.classId);
-        const matchesQuery = !normalized || student.name.toLowerCase().includes(normalized) || student.index.toLowerCase().includes(normalized);
-        return matchesGrade && matchesClass && matchesQuery;
-      });
+
+      // Phase 3.3: SQL already handles grade/classId/query filtering above;
+      // no redundant application-level filter pass needed.
+      return students;
     }, () => uniqueBy(filterMemoryStudents(params), (student) => student.index.toLowerCase()));
   },
 
@@ -2345,6 +2395,19 @@ const resolveTermInfo = (academicYear?: number) => {
 };
 
 const getActiveClassIdsForStudent = async (studentId: string) => {
+  // Phase 3.2: Try the RPC first — single round-trip that merges
+  // students.class_id + student_enrollments in one query.
+  try {
+    const { data, error } = await supabase!
+      .rpc('get_student_class_ids', { p_student_id: studentId });
+    if (!error && data) {
+      return (data as { class_id: string }[]).map((r) => r.class_id);
+    }
+  } catch {
+    // RPC not yet deployed — fall back to the two-query approach
+  }
+
+  // Fallback: original 2-query approach
   const { data: enrollments, error: enrollmentError } = await supabase!
     .from('student_enrollments')
     .select('class_id,status')
@@ -2390,10 +2453,18 @@ const getActiveStudentIdsForClass = async (classId: string) => {
   ]));
 };
 
-const getActiveEnrollmentsByStudentId = async () => {
-  const { data, error } = await supabase!
+const getActiveEnrollmentsByStudentId = async (studentIds?: string[]) => {
+  if (studentIds && studentIds.length === 0) return new Map<string, import('../types.js').StudentEnrollment[]>();
+  
+  let query = supabase!
     .from('student_enrollments')
     .select('id,student_id,class_id,academic_year,status,enrolled_at');
+    
+  if (studentIds) {
+    query = query.in('student_id', studentIds);
+  }
+  
+  const { data, error } = await query;
   if (error) throw error;
 
   const map = new Map<string, import('../types.js').StudentEnrollment[]>();
@@ -2412,26 +2483,56 @@ const getActiveEnrollmentsByStudentId = async () => {
   return map;
 };
 
-const getMarksByStudentId = async () => {
-  const [{ data: exams, error: examError }, { data: classes, error: classError }] = await Promise.all([
-    supabase!
-      .from('exams')
-      .select('id,class_id,exam_type,title,exam_date'),
-    supabase!
-      .from('classes')
-      .select('id,subject_name,label'),
+const getMarksByStudentId = async (studentIds?: string[]) => {
+  if (studentIds && studentIds.length === 0) return new Map<string, AdminStudentMark[]>();
+
+  // Phase 3.1: Scope exams and classes to only the classIds relevant to
+  // the given students — eliminates the full-table scans.
+  let studentClassIds: string[] = [];
+  if (studentIds && studentIds.length > 0) {
+    const { data: studentRows } = await supabase!
+      .from('students')
+      .select('class_id')
+      .in('id', studentIds);
+    const fromPrimary = (studentRows ?? []).map((s) => s.class_id).filter(Boolean) as string[];
+
+    const { data: enrollmentRows } = await supabase!
+      .from('student_enrollments')
+      .select('class_id')
+      .in('student_id', studentIds)
+      .eq('status', 'active');
+    const fromEnrollments = (enrollmentRows ?? []).map((e) => e.class_id).filter(Boolean) as string[];
+
+    studentClassIds = Array.from(new Set([...fromPrimary, ...fromEnrollments]));
+  }
+
+  let resultsQuery = supabase!
+    .from('results')
+    .select('exam_id,student_id,marks_obtained,is_absent');
+  if (studentIds) resultsQuery = resultsQuery.in('student_id', studentIds);
+
+  let examsQuery = supabase!
+    .from('exams')
+    .select('id,class_id,exam_type,title,exam_date');
+  if (studentClassIds.length > 0) examsQuery = examsQuery.in('class_id', studentClassIds);
+
+  let classesQuery = supabase!
+    .from('classes')
+    .select('id,subject_name,label');
+  if (studentClassIds.length > 0) classesQuery = classesQuery.in('id', studentClassIds);
+
+  const [{ data: exams, error: examError }, { data: classes, error: classError }, { data: results, error: resultError }] = await Promise.all([
+    examsQuery,
+    classesQuery,
+    resultsQuery,
   ]);
   if (examError) throw examError;
   if (classError) throw classError;
+  if (resultError) throw resultError;
 
   const examById = new Map((exams ?? []).map((exam) => [exam.id, exam]));
   const classById = new Map((classes ?? []).map((classItem) => [classItem.id, classItem]));
   if (examById.size === 0) return new Map<string, AdminStudentMark[]>();
-
-  const { data: results, error: resultError } = await supabase!
-    .from('results')
-    .select('exam_id,student_id,marks_obtained,is_absent');
-  if (resultError) throw resultError;
 
   const map = new Map<string, AdminStudentMark[]>();
   (results ?? []).forEach((result) => {
