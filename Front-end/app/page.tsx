@@ -3,12 +3,8 @@ import HeroSection from '@/components/HeroSection'
 import AcademyInfo from '@/components/AcademyInfo'
 import LecturerCarousel from '@/components/LecturerCarousel'
 import TimetablePreview from '@/components/TimetablePreview'
-import Gallery from '@/components/Gallery'
-import Articles from '@/components/Articles'
 import ContactSection from '@/components/ContactSection'
-import FaqSection from '@/components/FaqSection'
 import Footer from '@/components/Footer'
-import TawkToWidget from '@/components/TawkToWidget'
 import { getSiteContent } from '@/utils/siteContent'
 
 export default async function Home() {
@@ -30,12 +26,8 @@ export default async function Home() {
           ))}
         </div>
         <TimetablePreview />
-        <Gallery images={content.galleryImages} />
-        <Articles articles={content.articles} />
         <ContactSection />
-        <FaqSection />
         <Footer />
-        <TawkToWidget />
       </main>
   )
 }

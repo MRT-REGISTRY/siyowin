@@ -1,171 +1,127 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SiteHeroImage } from '@/types/siteContent'
 import { useLanguage } from './LanguageProvider'
+
+const slidesData = {
+  en: [
+    { title: 'Learn Anytime,\nAnywhere', sub: 'Access all your lessons and resources online from any device.', cta: 'Get Started Today' },
+    { title: 'Learn Anytime,\nAnywhere', sub: 'Access all your lessons and resources online from any device.', cta: 'Get Started Today' },
+  ],
+  si: [
+    { title: 'ඕනෑම වේලාවක\nඉගෙනගන්න', sub: 'ඕනෑම උපකරණයකින් ඔබේ සියලු පාඩම් ලබා ගන්න.', cta: 'ආරම්භ කරන්න' },
+    { title: 'ඕනෑම වේලාවක\nඉගෙනගන්න', sub: 'ඕනෑම උපකරණයකින් ඔබේ සියලු පාඩම් ලබා ගන්න.', cta: 'ආරම්භ කරන්න' },
+  ]
+}
 
 export default function HeroSection({
   images,
   mobileImages = [],
 }: {
-  images: SiteHeroImage[]
+  images?: SiteHeroImage[]
   mobileImages?: SiteHeroImage[]
 }) {
-  const [isMobile, setIsMobile] = useState(false)
+  const [active, setActive] = useState(0)
   const { isSinhala } = useLanguage()
-  const bgImages = isMobile && mobileImages.length > 0 ? mobileImages : images
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const selectedImage = bgImages.length > 0 ? bgImages[currentImageIndex % bgImages.length] : undefined
 
-  const handlePrevious = () => {
-    setCurrentImageIndex((prev) => (prev === 0 ? bgImages.length - 1 : prev - 1))
+  const heroImages = ['/photos/bggrund (1).jpg', '/photos/bggrund (3).jpg']
+  
+  const lang = isSinhala ? 'si' : 'en'
+  const slides = slidesData[lang]
+
+  useEffect(() => {
+    const timer = setInterval(() => setActive((a) => (a + 1) % slides.length), 5500)
+    return () => clearInterval(timer)
+  }, [slides.length])
+
+  const slide = slides[active]
+
+  const handleCtaClick = () => {
+    if (active === 1) {
+      document.getElementById('teachers')?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      window.dispatchEvent(new CustomEvent('open-lms-login'))
+    }
   }
-
-  const handleNext = () => {
-    setCurrentImageIndex((prev) => (prev === bgImages.length - 1 ? 0 : prev + 1))
-  }
-
-  useEffect(() => {
-    if (bgImages.length < 2) return
-
-    const imageTimer = window.setInterval(() => {
-      setCurrentImageIndex((prev) => (prev === bgImages.length - 1 ? 0 : prev + 1))
-    }, 5000)
-
-    return () => window.clearInterval(imageTimer)
-  }, [bgImages.length])
-
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 767px)')
-    const updateMatch = () => setIsMobile(query.matches)
-
-    updateMatch()
-    query.addEventListener('change', updateMatch)
-
-    return () => query.removeEventListener('change', updateMatch)
-  }, [])
-
-  useEffect(() => {
-    setCurrentImageIndex((current) => (bgImages.length > 0 ? current % bgImages.length : 0))
-  }, [bgImages.length])
-
-  if (!selectedImage) return null
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      {/* Background Image with Overlay */}
-      <Image
-        src={selectedImage.src}
-        alt={selectedImage.alt}
-        fill
-        priority
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
-        className="object-cover"
-        quality={85}
+    <section id="home" className="relative w-full h-screen min-h-[600px] overflow-hidden">
+      {/* Slides */}
+      {slides.map((_, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-1000"
+          style={{ opacity: i === active ? 1 : 0 }}
+        >
+          <Image 
+            src={heroImages[i % heroImages.length]} 
+            alt="Hero Background" 
+            fill 
+            priority={i === 0} 
+            className="w-full h-full object-cover" 
+          />
+        </div>
+      ))}
+
+      {/* Overlay */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(120deg, rgba(20,54,125,0.82) 0%, rgba(192,24,46,0.55) 60%, rgba(0,0,0,0.45) 100%)' }}
       />
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/40"></div>
-
       {/* Content */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-4">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
-          {isSinhala ? 'සාදරයෙන් පිළිගනිමු' : 'WELCOME TO'}{' '}
-          <span className="text-red" style={{ color: 'red' , fontWeight: 'bold' }}>SIYOWIN</span>
-        </h1>
-        <p className="text-lg md:text-xl text-gray-100 mb-8 drop-shadow-md">
-          {isSinhala ? 'උසස් අධ්‍යාපනයෙන් දරුවන්ගේ අනාගතය දිරිමත් කරමින්' : 'Inspiring Minds Through Excellence in Education'}
-        </p>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('open-lms-login'))}
-          className="group relative overflow-hidden rounded-md bg-gradient-to-r from-[#D9232D] to-[#F47920] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-400/40 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-400/50 active:scale-95 cursor-pointer"
-        >
-          <span className="relative z-10 flex items-center gap-2">
-            {isSinhala ? 'LMS පිවිසුම' : 'LMS Login'}
-          </span>
-          <span className="absolute inset-0 translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-0" />
-        </button>
+      <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-16 max-w-7xl mx-auto">
+        <div className="max-w-2xl mt-16 md:mt-0">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-white mb-6"
+            style={{ background: 'rgba(192,24,46,0.7)', border: '1px solid rgba(255,255,255,0.25)' }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            Siyowin Institute
+          </div>
+          <h1
+            className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-5 transition-all duration-500 whitespace-pre-line"
+            key={active}
+            style={{ textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}
+          >
+            {slide.title}
+          </h1>
+          <p className="text-white/80 text-base sm:text-lg mb-8 max-w-xl leading-relaxed">
+            {slide.sub}
+          </p>
+          <button
+            onClick={handleCtaClick}
+            className="inline-flex items-center gap-2 font-semibold px-7 py-3.5 rounded-lg text-white transition-all duration-200 text-sm sm:text-base cursor-pointer"
+            style={{ background: '#C0182E', boxShadow: '0 4px 20px rgba(192,24,46,0.4)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#9B0F22')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#C0182E')}
+          >
+            {slide.cta}
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <button
-        onClick={handlePrevious}
-        disabled={bgImages.length < 2}
-        className="absolute left-4 top-1/2 z-20 transform -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white p-2 rounded-full transition duration-200"
-        aria-label="Previous image"
-      >
-        <ChevronLeft size={32} />
-      </button>
-
-      <button
-        onClick={handleNext}
-        disabled={bgImages.length < 2}
-        className="absolute right-4 top-1/2 z-20 transform -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white p-2 rounded-full transition duration-200"
-        aria-label="Next image"
-      >
-        <ChevronRight size={32} />
-      </button>
-
-      {/* Bottom Wave Divider */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 overflow-hidden md:h-28">
-        <svg
-          className="hero-wave hero-wave-back absolute bottom-8 left-0 h-full w-[128%]"
-          viewBox="0 0 1440 140"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="rgba(128, 0, 45, 0.34)"
-            d="M0,78 C150,36 270,116 438,74 C612,30 726,42 890,84 C1066,130 1240,82 1440,42 L1440,140 L0,140 Z"
+      {/* Dot indicators */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setActive(i)}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width: i === active ? '28px' : '8px',
+              height: '8px',
+              background: i === active ? '#C0182E' : 'rgba(255,255,255,0.5)',
+            }}
           />
-        </svg>
-        <svg
-          className="hero-wave hero-wave-mid absolute bottom-5 left-0 h-full w-[124%]"
-          viewBox="0 0 1440 140"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="rgba(182, 42, 90, 0.42)"
-            d="M0,64 C184,114 314,18 494,62 C672,105 796,118 990,72 C1168,30 1276,44 1440,88 L1440,140 L0,140 Z"
-          />
-        </svg>
-        <svg
-          className="hero-wave hero-wave-near absolute bottom-2 left-0 h-full w-[120%]"
-          viewBox="0 0 1440 140"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="rgba(226, 92, 128, 0.36)"
-            d="M0,92 C172,46 286,58 432,88 C594,122 736,80 880,50 C1058,12 1230,88 1440,58 L1440,140 L0,140 Z"
-          />
-        </svg>
-        <svg
-          className="hero-wave hero-wave-white-soft absolute bottom-0 left-0 h-full w-[116%]"
-          viewBox="0 0 1440 140"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="rgba(255, 255, 255, 0.86)"
-            d="M0,86 C142,116 300,54 466,74 C638,96 754,128 946,84 C1132,42 1258,42 1440,74 L1440,140 L0,140 Z"
-          />
-        </svg>
-        <svg
-          className="hero-wave-white-front absolute bottom-[-1px] left-0 h-[55%] w-full"
-          viewBox="0 0 1440 140"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            fill="#ffffff"
-            d="M0,96 C164,48 296,94 456,74 C640,50 728,20 904,66 C1080,112 1222,106 1440,56 L1440,140 L0,140 Z"
-          />
-        </svg>
+        ))}
       </div>
-    </div>
+
+    </section>
   )
 }

@@ -11,6 +11,18 @@ export type AuthUser = {
   isActive?: boolean;
 };
 
+// Express Request augmentation — req.user and req.context are available on
+// every route handler without additional imports.
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+      context: import('./context/RequestContext.js').RequestContext;
+    }
+  }
+}
+
+
 export type SubjectHistoryItem = {
   label: string;
   date: string;

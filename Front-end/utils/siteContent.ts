@@ -5,13 +5,11 @@ import { lecturerSections } from '@/data/teachers';
 const localHeroImages = [
   { id: 'hero-1', src: '/photos/bggrund (1).jpg', alt: 'Siyowin academy classroom event', width: 2048, height: 2048 },
   { id: 'hero-2', src: '/photos/bggrund (3).jpg', alt: 'Siyowin higher education institute', width: 2048, height: 1542 },
-  { id: 'hero-3', src: '/photos/bggrund (6).jpg', alt: 'Siyowin academy lecture hall', width: 2048, height: 1366 },
-  { id: 'hero-4', src: '/photos/bggrund (8).jpg', alt: 'Siyowin academy campus moment', width: 2048, height: 1536 },
 ];
 
 const localMobileHeroImages = [
-  { id: 'mobile-hero-1', src: '/photos/mobile/bggrund (3).jpg', alt: 'Siyowin higher education institute mobile view', width: 2048, height: 1542 },
-  { id: 'mobile-hero-2', src: '/photos/mobile/bggrund (8).jpg', alt: 'Siyowin academy campus mobile view', width: 2048, height: 1536 },
+  { id: 'mobile-hero-1', src: '/photos/bggrund (1).jpg', alt: 'Siyowin academy classroom event mobile view', width: 2048, height: 2048 },
+  { id: 'mobile-hero-2', src: '/photos/mobile/bggrund (3).jpg', alt: 'Siyowin higher education institute mobile view', width: 2048, height: 1542 },
 ];
 
 const localGalleryImages = [

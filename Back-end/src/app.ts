@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -10,6 +11,7 @@ import healthRoutes from './routes/health.routes.js';
 import publicRoutes from './routes/public.routes.js';
 import teacherRoutes from './routes/teacher.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { attachContext } from './middleware/context.js';
 
 export const app = express();
 app.set('etag', false);
@@ -32,6 +34,8 @@ app.use(
 );
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
+// Attach a fresh RequestContext to every request before route handlers run.
+app.use(attachContext);
 app.use('/api', (_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
