@@ -7,8 +7,8 @@ import { useLanguage } from './LanguageProvider'
 
 const slidesData = {
   en: [
-    { title: 'Learn Anytime,\nAnywhere', sub: 'Access all your lessons and resources online from any device.', cta: 'Get Started Today' },
-    { title: 'Learn Anytime,\nAnywhere', sub: 'Access all your lessons and resources online from any device.', cta: 'Get Started Today' },
+    { title: 'Learn\nwithout making mistakes', sub: 'Every moment spent studying hard today is an investment in a happy life tomorrow!', cta: 'Get Started Today' },
+    { title: 'Learn\nwithout making mistakes', sub: 'Every moment spent studying hard today is an investment in a happy life tomorrow!', cta: 'Get Started Today' },
   ],
   si: [
     { title: 'වරදින්නෙ නැතිව\nඉගෙනගන්න', sub: 'අද මහන්සියෙන් ඉගෙන ගන්නා හැම මොහොතක්ම හෙට සැපවත් ජීවිතයකට ආයෝජනයක්!', cta: 'ආරම්භ කරන්න' },
