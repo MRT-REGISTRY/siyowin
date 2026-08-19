@@ -1,79 +1,81 @@
 'use client';
 
-import { BarChart3, Medal, ClipboardCheck, Star } from 'lucide-react';
-import { DashboardOverview, SubjectRecord } from '@/types';
+import { BookOpen, FileText, Star } from 'lucide-react';
+import { DashboardOverview, SubjectModuleItem, SubjectExamResult } from '@/types';
 import { useLanguage } from '@/components/LanguageProvider';
 
 interface Props {
   overview: DashboardOverview | null;
-  subjects: SubjectRecord[];
+  latestItems?: SubjectModuleItem[];
+  latestResults?: SubjectExamResult[];
+  onOpenSubject?: (subjectId: string) => void;
 }
 
-export default function OverviewCards({ overview, subjects }: Props) {
+export default function OverviewCards({ overview, latestItems, latestResults, onOpenSubject }: Props) {
   const { isSinhala } = useLanguage();
   const average = overview?.averageMark ?? 0;
-  const homeworkDone = subjects.reduce((total, subject) => total + subject.homeworkDoneThisMonth, 0);
-  const homeworkTarget = subjects.reduce((total, subject) => total + subject.homeworkTargetThisMonth, 0);
-  const cards = [
-    {
-      id: 'avg',
-      label: isSinhala ? 'මුළු සාමාන්‍යය' : 'Overall Average',
-      value: `${average}%`,
-      sub: isSinhala ? 'පසුගිය වාරයට වඩා +2.1%' : '+2.1% from last term',
-      icon: BarChart3,
-      color: 'red',
-      trend: 'up',
-    },
-    {
-      id: 'rank',
-      label: isSinhala ? 'පන්ති ස්ථානය' : 'Class Rank',
-      value: `#${overview?.classRank ?? '-'}`,
-      sub: isSinhala ? 'වත්මන් හොඳම විෂය ස්ථානය' : 'Current best subject rank',
-      icon: Medal,
-      color: 'orange',
-      trend: 'neutral',
-    },
-    {
-      id: 'hw',
-      label: isSinhala ? 'ගෙදර වැඩ සම්පූර්ණ කිරීම' : 'Homework Completion',
-      value: `${overview?.homeworkCompletion ?? 0}%`,
-      sub: isSinhala ? `${homeworkTarget}න් ${homeworkDone}ක් සම්පූර්ණයි` : `${homeworkDone} of ${homeworkTarget} tasks done`,
-      icon: ClipboardCheck,
-      color: 'navy',
-      trend: 'up',
-    },
-    {
-      id: 'status',
-      label: isSinhala ? 'කාර්යසාධන තත්ත්වය' : 'Performance Status',
-      value: average >= 85 ? (isSinhala ? 'විශිෂ්ටයි' : 'Excellent') : average >= 70 ? (isSinhala ? 'හොඳයි' : 'Good') : (isSinhala ? 'වැඩි අවධානය අවශ්‍යයි' : 'Needs Work'),
-      sub: isSinhala ? `හොඳම විෂය: ${overview?.bestSubject ?? '-'}` : `Best subject: ${overview?.bestSubject ?? '-'}`,
-      icon: Star,
-      color: 'dark',
-      trend: 'up',
-    },
-  ];
+  const recentResultSlots = Array.from({ length: 3 }, (_, index) => {
+    const res = latestResults?.[index];
+
+    if (!res) {
+      return {
+        id: `result-${index}`,
+        label: `Previous mark ${index + 1}`,
+        value: isSinhala ? 'පෙර ලකුණු නොමැත' : 'No previous mark available',
+        sub: '',
+        icon: FileText,
+        color: index === 0 ? 'red' : index === 1 ? 'orange' : 'dark',
+        classId: undefined,
+        empty: true,
+      };
+    }
+
+    return {
+      id: `result-${index}`,
+      label: res.examTitle,
+      value:
+        res.marksObtained !== null && res.marksObtained !== undefined
+          ? `${res.marksObtained}/${res.totalMarks ?? '100'}`
+          : (isSinhala ? 'වාර්ථකයි' : 'Absent'),
+      sub: res.examDate ?? res.createdAt ?? '',
+      icon: FileText,
+      color: index === 0 ? 'red' : index === 1 ? 'orange' : 'dark',
+      classId: (res as any).classId,
+      empty: false,
+    };
+  });
+
+  const cards = recentResultSlots;
 
   return (
     <section className="sd-overview-grid">
-      {cards.map((card) => {
+      {cards.map((card, idx) => {
         const Icon = card.icon;
         return (
-          <article key={card.id} className={`sd-overview-card sd-card-${card.color}`}>
+          <button
+            key={card.id}
+            type="button"
+            className={`sd-overview-card sd-card-${card.color} ${(card as any).empty ? 'sd-overview-card--empty' : ''} text-left`}
+            onClick={() => {
+              if ((card as any).empty) return;
+              if ((card as any).classId && onOpenSubject) {
+                onOpenSubject((card as any).classId);
+                return;
+              }
+            }}
+          >
             <div className="sd-overview-card-header">
               <div className={`sd-overview-icon sd-icon-${card.color}`}>
                 <Icon size={20} />
               </div>
-              {card.trend === 'up' && (
-                <span className="sd-trend-badge sd-trend-up">↑ {isSinhala ? 'දියුණු වෙමින්' : 'Improving'}</span>
-              )}
             </div>
             <div className="sd-overview-card-body">
               <p className="sd-overview-label">{card.label}</p>
               <p className="sd-overview-value">{card.value}</p>
-              <p className="sd-overview-sub">{card.sub}</p>
+              {card.sub ? <p className="sd-overview-sub">{card.sub}</p> : null}
             </div>
             <div className={`sd-card-glow sd-glow-${card.color}`} />
-          </article>
+          </button>
         );
       })}
     </section>

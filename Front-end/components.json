@@ -17,5 +17,14 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "registries": [
+    {
+      "name": "reactbits-starter",
+      "url": "https://pro.reactbits.dev/registry/starter",
+      "headers": {
+        "Authorization": "Bearer "
+      }
+    }
+  ]
 }

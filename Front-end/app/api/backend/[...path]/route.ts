@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_API_URL = process.env.BACKEND_API_URL ?? 'https://api.siyowin.lk/api';
+const BACKEND_API_URL = process.env.BACKEND_API_URL ?? (process.env.NODE_ENV === 'development' ? 'http://localhost:4000/api' : 'https://api.siyowin.lk/api');
 
 const proxyRequest = async (request: NextRequest, context: { params: Promise<{ path: string[] }> }) => {
   const { path } = await context.params;
@@ -38,5 +38,6 @@ const proxyRequest = async (request: NextRequest, context: { params: Promise<{ p
 
 export const GET = proxyRequest;
 export const POST = proxyRequest;
+export const PUT = proxyRequest;
 export const PATCH = proxyRequest;
 export const DELETE = proxyRequest;

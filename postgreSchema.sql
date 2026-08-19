@@ -4,11 +4,12 @@ CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TYPE user_role AS ENUM ('student', 'teacher', 'admin', 'super-admin');
-CREATE TYPE exam_type_enum AS ENUM ('term-test', 'day-paper', 'month-test', 'quiz', 'practical');
+CREATE TYPE exam_type_enum AS ENUM ('term-test', 'day-paper', 'month-test', 'quiz', 'practical', 'homework');
 CREATE TYPE report_status AS ENUM ('pending', 'sent', 'failed');
 CREATE TYPE report_channel AS ENUM ('whatsapp', 'email', 'both');
 CREATE TYPE enrollment_status AS ENUM ('active', 'completed', 'cancelled');
 CREATE TYPE teacher_assignment_role AS ENUM ('primary', 'assistant');
+CREATE TYPE subject_module_item_type AS ENUM ('mark', 'link', 'text', 'document', 'video');
 
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
@@ -63,6 +64,8 @@ CREATE TABLE students (
     name VARCHAR(100) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,
+    address TEXT,
+    school VARCHAR(150),
     parent_name VARCHAR(100),
     parent_phone VARCHAR(20),
     date_of_birth DATE,
@@ -240,6 +243,26 @@ CREATE TABLE monthly_reports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE subject_modules (
+    id TEXT PRIMARY KEY,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    title VARCHAR(150) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE subject_module_items (
+    id TEXT PRIMARY KEY,
+    module_id TEXT NOT NULL REFERENCES subject_modules(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    item_type subject_module_item_type NOT NULL DEFAULT 'text',
+    href TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_students_class ON students(class_id);
 CREATE INDEX idx_student_enrollments_student ON student_enrollments(student_id);
 CREATE INDEX idx_student_enrollments_class ON student_enrollments(class_id);
@@ -248,6 +271,10 @@ CREATE INDEX idx_teacher_class_assignments_class ON teacher_class_assignments(cl
 CREATE INDEX idx_results_exam ON results(exam_id);
 CREATE INDEX idx_results_student ON results(student_id);
 CREATE INDEX idx_exams_class ON exams(class_id);
+CREATE INDEX idx_subject_modules_class ON subject_modules(class_id);
+CREATE INDEX idx_subject_modules_order ON subject_modules(class_id, sort_order);
+CREATE INDEX idx_subject_module_items_module ON subject_module_items(module_id);
+CREATE INDEX idx_subject_module_items_order ON subject_module_items(module_id, sort_order);
 
 ALTER TABLE users
     ADD CONSTRAINT users_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL;

@@ -91,7 +91,7 @@ export default function SubjectsPage({ subjects, onSelectSubject }: Props) {
                   <h3 className="sdp-card-name">{subject.name}</h3>
                   <p className="sdp-card-teacher">{subject.teacher}</p>
                 </div>
-                <span className="sdp-card-open">Open report <ArrowRight size={13} /></span>
+                <span className="sdp-card-open">Open <ArrowRight size={13} /></span>
               </div>
             </div>
           </button>

@@ -1,61 +1,88 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowLeft, CalendarDays, CheckCircle2, Circle, NotebookPen } from 'lucide-react';
-import { SubjectExamResult, SubjectRecord, SubjectResultsResponse } from '@/types';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Circle, ExternalLink, FileText, Link2, Trophy, Video } from 'lucide-react';
+import { ApiSubjectModule, SubjectHomeworkItem, SubjectRecord } from '@/types';
 import { apiGet } from '@/utils/api';
-import LeaderboardForSubject from '../LeaderboardForSubject';
-import { useLanguage } from '@/components/LanguageProvider';
 
 interface Props {
   subject: SubjectRecord;
   onBack: () => void;
 }
 
-const formatDate = (value: string) => {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-
-  return parsed.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+type FeedItem = {
+  id: string;
+  title: string;
+  date: string | null;
+  kind: 'document' | 'video' | 'link' | 'mark' | 'homework';
+  href?: string;
+  topic?: string;
+  meta?: string;
+  status?: 'completed' | 'pending';
 };
 
-const formatExamType = (value: string) =>
-  value
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+const dateValue = (value?: string | null) => {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
-const renderScore = (result: SubjectExamResult) => {
-  if (result.isAbsent) return 'Absent';
+const formatDate = (value?: string | null) => {
+  if (!value) return 'No date';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
-  const obtained = result.marksObtained ?? 0;
-  const total = result.totalMarks ?? 100;
-  return `${obtained}/${total}`;
+const getItemLabel = (item: FeedItem) => {
+  if (item.kind === 'mark') return 'Assignment result';
+  if (item.kind === 'homework') return 'Homework';
+  if (item.kind === 'document') return 'Document';
+  if (item.kind === 'video') return 'Video';
+  return 'Link';
+};
+
+const getItemTone = (item: FeedItem) => {
+  if (item.kind === 'mark') return 'border-amber-200 bg-amber-50 text-amber-700';
+  if (item.kind === 'video') return 'border-rose-200 bg-rose-50 text-rose-700';
+  if (item.kind === 'document') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (item.kind === 'link') return 'border-sky-200 bg-sky-50 text-sky-700';
+  if (item.status === 'completed') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  return 'border-slate-200 bg-slate-50 text-slate-600';
 };
 
 export default function SubjectReportPage({ subject, onBack }: Props) {
-  const { isSinhala } = useLanguage();
-  const [report, setReport] = useState<SubjectResultsResponse | null>(null);
+  const [modules, setModules] = useState<ApiSubjectModule[]>([]);
+  const [results, setResults] = useState<any[]>([]);
+  const [homework, setHomework] = useState<SubjectHomeworkItem[]>(subject.recentHomeworks);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let mounted = true;
+
     setLoading(true);
     setError('');
+    setModules([]);
+    setResults([]);
+    setHomework(subject.recentHomeworks);
+    setExpandedItems([]);
 
-    apiGet<SubjectResultsResponse>(`/dashboard/subjects/${subject.id}/results`)
-      .then((data) => {
+    Promise.all([
+      apiGet<{ subjectId: string; modules: ApiSubjectModule[] }>(`/dashboard/subjects/${subject.id}/modules`),
+      apiGet(`/dashboard/subjects/${subject.id}/results`).catch(() => ({ recentResults: [], results: [] })),
+      apiGet<{ subjectId: string; homework: SubjectHomeworkItem[] }>(`/dashboard/subjects/${subject.id}/homework`).catch(() => ({ homework: subject.recentHomeworks })),
+    ])
+      .then(([response, resultResp, homeworkResp]: any) => {
         if (!mounted) return;
-        setReport(data);
+        setModules(response.modules ?? []);
+        setResults((resultResp?.results ?? resultResp?.recentResults ?? []) as any[]);
+        setHomework((homeworkResp?.homework ?? subject.recentHomeworks) as SubjectHomeworkItem[]);
       })
-      .catch((err) => {
+      .catch((fetchError) => {
         if (!mounted) return;
-        setError(err instanceof Error ? err.message : 'Unable to load subject results.');
+        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load subject content.');
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -64,216 +91,201 @@ export default function SubjectReportPage({ subject, onBack }: Props) {
     return () => {
       mounted = false;
     };
-  }, [subject.id]);
+  }, [subject.id, subject.recentHomeworks]);
 
-  const results = report?.results ?? [];
-  const recentResults = report?.recentResults ?? [];
-  const previousResults = report?.previousResults ?? [];
-  const scoredResults = results.filter((item) => !item.isAbsent && item.marksObtained !== null);
-  const averageMark = scoredResults.length
-    ? Math.round(scoredResults.reduce((total, item) => total + (item.marksObtained ?? 0), 0) / scoredResults.length)
-    : null;
-  const absentCount = results.filter((item) => item.isAbsent).length;
+  const feedItems = useMemo<FeedItem[]>(() => {
+    const resourceItems = modules.flatMap((module) =>
+      module.items
+        .filter((item) => item.type === 'document' || item.type === 'video' || item.type === 'link')
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          date: item.createdAt ?? null,
+          kind: item.type,
+          href: item.href,
+        } satisfies FeedItem)),
+    );
+
+    const markItems = results
+      .filter((result, index, all) =>
+        !result.isAbsent &&
+        result.marksObtained !== null &&
+        all.findIndex((candidate) => candidate.examId === result.examId) === index,
+      )
+      .map((result) => ({
+        id: `result-${result.examId}`,
+        title: result.examTitle,
+        date: result.createdAt ?? result.examDate ?? null,
+        kind: 'mark' as const,
+        meta: `${result.marksObtained}/${result.totalMarks ?? 100}`,
+      }));
+
+    const homeworkItems = homework.map((item) => ({
+      id: `homework-${item.id}`,
+      title: item.title,
+      date: item.createdAt ?? item.dueDate ?? null,
+      kind: 'homework' as const,
+      status: item.status,
+    }));
+
+    return [...resourceItems, ...markItems, ...homeworkItems]
+      .sort((a, b) => dateValue(b.date) - dateValue(a.date));
+  }, [homework, modules, results]);
+
+  const allExpanded = feedItems.length > 0 && expandedItems.length === feedItems.length;
+
+  const toggleItem = (itemId: string) => {
+    setExpandedItems((current) =>
+      current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId],
+    );
+  };
+
+  const toggleAll = () => {
+    setExpandedItems(allExpanded ? [] : feedItems.map((item) => item.id));
+  };
 
   return (
-    <div className="sdr-wrap">
-      <div className="sdr-topbar">
-        <button type="button" className="sdr-back-btn" onClick={onBack}>
-          <ArrowLeft size={16} /> Back to subjects
-        </button>
-        <span className="sdr-class-pill">{subject.classLabel}</span>
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans">
+      <div className="px-4 pt-4 md:px-8 md:pt-6">
+        <div className="mx-auto max-w-[1400px] rounded-2xl border border-slate-300 bg-slate-200 px-6 py-5 shadow-sm">
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-4 flex items-center text-sm text-slate-500 transition-colors hover:text-slate-900"
+          >
+            <ArrowLeft size={16} className="mr-1" /> Back to My courses
+          </button>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {subject.name} - {subject.teacher}
+          </h1>
+        </div>
       </div>
 
-      <section className="sdr-hero sdp-card">
-        <div className="sdr-hero-main">
-          <div className="sdr-emoji" aria-hidden="true">{subject.emoji}</div>
-          <div>
-            <p className="sdr-subtitle">{isSinhala ? 'සිසුන්ගේ විභාග ප්‍රතිඵල' : 'Student exam results'}</p>
-            <h1 className="sdr-title">{subject.name}</h1>
-            <p className="sdr-teacher">Teacher: {subject.teacher}</p>
-          </div>
-        </div>
-
-        <div className="sdr-overall-box" style={{ borderColor: subject.color }}>
-          <span className="sdr-overall-label">Recent average</span>
-          <strong className="sdr-overall-mark" style={{ color: subject.color }}>
-            {averageMark !== null ? `${averageMark}%` : 'No marks yet'}
-          </strong>
-          <span className="sdr-overall-sub">
-            {results.length} exam{results.length === 1 ? '' : 's'} · {absentCount} absent
-          </span>
-        </div>
-      </section>
-
-      <section className="sdr-metric-grid">
-        {[
-          [isSinhala ? 'පන්තිය' : 'Class', subject.classLabel],
-          [isSinhala ? 'ශ්‍රේණිය' : 'Grade', subject.gradeId ?? (isSinhala ? 'සකසා නැත' : 'Not set')],
-          ['Medium', subject.medium ?? 'Not set'],
-          ['Schedule', subject.schedule ?? 'Not set'],
-          ['Fee', subject.fee !== null && subject.fee !== undefined ? `Rs. ${subject.fee}` : 'Not set'],
-        ].map(([label, value]) => (
-          <article key={label} className="sdr-metric-card sdp-card">
-            <span className="sdr-metric-label">{label}</span>
-            <strong className="sdr-metric-value" style={{ fontSize: 18 }}>{value}</strong>
-          </article>
-        ))}
-      </section>
-
-      {loading && <p className="sdp-card">Loading exam results...</p>}
-      {!loading && error && <p className="sdp-card text-red-600">{error}</p>}
-
-      {!loading && !error && (
-        <>
-          <section className="sdr-metric-grid">
-            {recentResults.map((result) => (
-              <article key={result.examId} className="sdr-metric-card sdp-card">
-                <div className="sdr-metric-head">
-                  <span className="sdr-metric-icon sdr-icon-red"><NotebookPen size={18} /></span>
-                  <span className="sdr-metric-label">{formatExamType(result.examType)}</span>
-                </div>
-                <strong className="sdr-metric-value" style={{ color: subject.color }}>
-                  {renderScore(result)}
-                </strong>
-                <p className="sdr-metric-note">{result.examTitle}</p>
-                <p className="sdr-metric-note">
-                  <CalendarDays size={14} style={{ display: 'inline', marginRight: 6 }} />
-                  {formatDate(result.examDate)}
-                </p>
-                <p className="sdr-metric-note">{result.isAbsent ? 'Absent' : 'Present'}</p>
-              </article>
-            ))}
-
-            {recentResults.length === 0 && (
-              <article className="sdr-metric-card sdp-card">
-                <div className="sdr-metric-head">
-                  <span className="sdr-metric-icon sdr-icon-red"><NotebookPen size={18} /></span>
-                  <span className="sdr-metric-label">Recent exams</span>
-                </div>
-                <strong className="sdr-metric-value">No results</strong>
-                <p className="sdr-metric-note">No exam result rows are available for this subject yet.</p>
-              </article>
+      <div className="w-full flex-1 px-4 py-4 md:px-8 md:py-6">
+        <div className="mx-auto w-full max-w-[1400px]">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-950">Subject Activity</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Newest items are shown first.</p>
+            </div>
+            {!loading && !error && feedItems.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="self-start rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:self-center sm:text-sm"
+              >
+                {allExpanded ? 'Collapse all' : 'Expand all'}
+              </button>
             )}
-          </section>
+          </div>
 
-          <section className="sdr-main-grid">
-            <article className="sdr-history-card sdp-card">
-              <div className="sd-section-header">
-                <div>
-                  <h2 className="sd-section-title">Previous exams</h2>
-                  <p className="sd-section-sub">Older results for this subject</p>
-                </div>
-              </div>
+          {loading && <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-500">Loading subject content...</p>}
+          {!loading && error && <p className="rounded-xl border border-rose-100 bg-white px-4 py-6 text-sm text-rose-600">{error}</p>}
+          {!loading && !error && feedItems.length === 0 && (
+            <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm italic text-slate-400">No subject activity available.</p>
+          )}
 
-              {previousResults.length > 0 ? (
-                <div className="sdr-history-list">
-                  {previousResults.map((result) => (
-                    <div key={result.examId} className="sdr-history-item">
-                      <div className="sdr-history-icon">
-                        <NotebookPen size={16} />
+          <div className="space-y-3">
+            {feedItems.map((item) => {
+              const isExpanded = expandedItems.includes(item.id);
+              return (
+                <div key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => toggleItem(item.id)}
+                    className="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5"
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+                      {isExpanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                        <h3 className="line-clamp-2 text-base font-black leading-snug text-slate-950 sm:text-xl">{item.title}</h3>
+                        <span className={`w-fit rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider sm:text-[10px] ${getItemTone(item)}`}>
+                          {getItemLabel(item)}
+                        </span>
                       </div>
-                      <div className="sdr-history-body">
-                        <div className="sdr-history-top">
-                          <strong>{result.examTitle}</strong>
-                          <span>{formatDate(result.examDate)}</span>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {formatDate(item.date)}
+                      </p>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-200 px-4 pb-4 sm:px-5">
+                      <div className="divide-y divide-slate-200">
+                        <div className="flex items-center gap-3 py-4">
+                          <FeedIcon item={item} />
+                          <div className="min-w-0 flex-1">
+                            {item.href ? (
+                              <a href={item.href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-700 hover:underline sm:text-[15px]">
+                                {item.title}
+                              </a>
+                            ) : (
+                              <p className="text-sm font-semibold text-slate-800 sm:text-[15px]">{item.title}</p>
+                            )}
+                            <p className="mt-2 text-xs text-slate-500">
+                              {formatDate(item.date)}
+                            </p>
+                          </div>
+                          <ActivityAction item={item} />
                         </div>
-                        <p className="sdr-history-note">
-                          {formatExamType(result.examType)} · {result.isAbsent ? 'Absent for this exam' : `Scored ${renderScore(result)}`}
-                        </p>
-                      </div>
-                      <div className="sdr-history-mark" style={{ color: subject.color }}>
-                        {result.isAbsent ? 'Absent' : renderScore(result)}
+
+                        {(item.meta || item.kind === 'homework') && (
+                          <div className="grid gap-2 py-3 text-xs text-slate-600 sm:grid-cols-3">
+                            <p><span className="font-black text-slate-500">Added:</span> {formatDate(item.date)}</p>
+                            {item.meta && <p><span className="font-black text-slate-500">Details:</span> {item.meta}</p>}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <p className="sdr-history-note" style={{ margin: 0 }}>
-                  There are no older exams to show for this subject.
-                </p>
-              )}
-            </article>
-
-            <article className="sdr-homework-card sdp-card">
-              <div className="sd-section-header">
-                <div>
-                  <h2 className="sd-section-title">Result summary</h2>
-                  <p className="sd-section-sub">Present versus absent status</p>
-                </div>
-              </div>
-
-              <div className="sdr-homework-stats" style={{ marginTop: 0 }}>
-                <div>
-                  <span className="sdr-homework-label">Present</span>
-                  <strong>{results.length - absentCount}</strong>
-                </div>
-                <div>
-                  <span className="sdr-homework-label">Absent</span>
-                  <strong>{absentCount}</strong>
-                </div>
-              </div>
-
-              <div className="sdr-homework-bar">
-                <div
-                  className="sdr-homework-bar-fill"
-                  style={{
-                    width: `${results.length ? Math.round(((results.length - absentCount) / results.length) * 100) : 0}%`,
-                    background: subject.color,
-                  }}
-                />
-              </div>
-
-              <p className="sdr-homework-note">
-                {results.length === 0
-                  ? 'No subject results have been recorded yet.'
-                  : `${results.length - absentCount} exam${results.length - absentCount === 1 ? '' : 's'} were attended by the student.`}
-              </p>
-
-              <div className="sdr-recent-homework">
-                <div className="sdr-recent-homework-head">
-                  <h3>Result status</h3>
-                  <span>{results.length} total records</span>
-                </div>
-
-                <ul className="sdr-recent-homework-list">
-                  {results.slice(0, 5).map((result) => {
-                    const isAbsent = result.isAbsent;
-
-                    return (
-                      <li key={result.examId} className={`sdr-recent-homework-item ${isAbsent ? '' : 'sdr-recent-homework-done'}`}>
-                        <span className="sdr-recent-homework-status">
-                          {isAbsent ? <Circle size={16} /> : <CheckCircle2 size={16} />}
-                        </span>
-                        <span className="sdr-recent-homework-body">
-                          <strong>{result.examTitle}</strong>
-                          <small>
-                            {formatDate(result.examDate)} · {isAbsent ? 'Absent' : `Scored ${renderScore(result)}`}
-                          </small>
-                        </span>
-                        <span className={`sdr-recent-homework-badge ${isAbsent ? 'sdr-rh-badge-pending' : 'sdr-rh-badge-done'}`}>
-                          {isAbsent ? 'Absent' : 'Present'}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </article>
-          </section>
-
-          <section className="sdr-main-grid">
-            <article className="sdr-leaderboard-card sdp-card">
-              <div className="sd-section-header">
-                <div>
-                  <h2 className="sd-section-title">Class Leaderboard</h2>
-                  <p className="sd-section-sub">Performance within this class / subject</p>
-                </div>
-              </div>
-              <LeaderboardForSubject subjectId={subject.id} />
-            </article>
-          </section>
-        </>
-      )}
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
+}
+
+function FeedIcon({ item }: { item: FeedItem }) {
+  const className = 'mt-0.5 h-9 w-9 flex-shrink-0 rounded-xl border p-2 shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl sm:p-2.5';
+
+  if (item.kind === 'mark') return <Trophy className={`${className} border-amber-200 bg-amber-50 text-amber-600`} />;
+  if (item.kind === 'video') return <Video className={`${className} border-rose-200 bg-rose-50 text-rose-600`} />;
+  if (item.kind === 'document') return <FileText className={`${className} border-emerald-200 bg-emerald-50 text-emerald-600`} />;
+  if (item.kind === 'link') return <Link2 className={`${className} border-sky-200 bg-sky-50 text-sky-600`} />;
+  if (item.status === 'completed') return <CheckCircle2 className={`${className} border-emerald-200 bg-emerald-50 text-emerald-600`} />;
+  return <Circle className={`${className} border-slate-200 bg-slate-50 text-slate-500`} />;
+}
+
+function ActivityAction({ item }: { item: FeedItem }) {
+  if (item.kind === 'homework') {
+    return (
+      <span className={item.status === 'completed' ? 'shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900' : 'shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900'}>
+        {item.status === 'completed' ? 'Done' : 'Pending'}
+      </span>
+    );
+  }
+
+  if (item.href) {
+    return (
+      <a href={item.href} target="_blank" rel="noreferrer" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900 transition hover:bg-slate-50 sm:inline-flex">
+        Open <ExternalLink size={13} />
+      </a>
+    );
+  }
+
+  if (item.kind === 'mark') {
+    return (
+      <span className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900">
+        {item.meta ?? 'Result'}
+      </span>
+    );
+  }
+
+  return null;
 }

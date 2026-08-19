@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, GraduationCap, BookOpen, Eye, EyeOff, ArrowLeft, LogIn, ChevronRight, ShieldCheck } from 'lucide-react'
-import { getDashboardPathForRole, login } from '@/utils/api'
+import { X, GraduationCap, BookOpen, Eye, EyeOff, ArrowLeft, LogIn, ChevronRight } from 'lucide-react'
+import { getDashboardPathForRole, login, storeSession } from '@/utils/api'
 
 // ── Siyowin brand colours (from logo) ────────────────────────────────
 const BRAND = {
@@ -14,7 +14,7 @@ const BRAND = {
   orangeLight:'#fff7ed',
 }
 
-type Role = 'student' | 'teacher' | 'admin' | null
+type Role = 'student' | 'teacher' | null
 type Step = 'choose' | 'login'
 
 interface LmsLoginModalProps {
@@ -25,9 +25,10 @@ interface LmsLoginModalProps {
 export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
   const [step, setStep]         = useState<Step>('choose')
   const [role, setRole]         = useState<Role>(null)
-  const [email, setEmail]       = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading]   = useState(false)
   const [visible, setVisible]   = useState(false)
   const [error, setError]       = useState('')
@@ -42,8 +43,8 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
       setVisible(false)
       const t = setTimeout(() => {
         setStep('choose'); setRole(null)
-        setEmail(''); setPassword('')
-        setShowPw(false); setLoading(false); setError('')
+        setIdentifier(''); setPassword('')
+        setShowPw(false); setRememberMe(true); setLoading(false); setError('')
       }, 380)
       return () => clearTimeout(t)
     }
@@ -66,7 +67,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
   }, [onClose])
 
   const selectRole = (r: Role) => { setRole(r); setStep('login'); setError('') }
-  const handleBack = () => { setStep('choose'); setEmail(''); setPassword(''); setError('') }
+  const handleBack = () => { setStep('choose'); setIdentifier(''); setPassword(''); setError('') }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,9 +77,12 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
     setError('')
 
     try {
-      const result = await login({ email, password, role })
-      window.localStorage.setItem('siyowin_token', result.token)
-      window.localStorage.setItem('siyowin_user', JSON.stringify(result.user))
+      const loginPayload = role === 'student'
+        ? { username: identifier, password, role }
+        : { email: identifier, password, role }
+      
+      const result = await login(loginPayload)
+      storeSession(result, rememberMe)
       window.location.href = getDashboardPathForRole(result.user.role)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed.')
@@ -91,13 +95,11 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
   const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
   // Per-role colours
-  const roleColor = role === 'teacher' ? BRAND.navy : role === 'admin' ? BRAND.orange : BRAND.red
-  const roleLightBg = role === 'teacher' ? BRAND.navyLight : role === 'admin' ? BRAND.orangeLight : BRAND.redLight
+  const roleColor = role === 'teacher' ? BRAND.navy : BRAND.red
+  const roleLightBg = role === 'teacher' ? BRAND.navyLight : BRAND.redLight
   const roleGradient = role === 'teacher'
     ? `linear-gradient(135deg, ${BRAND.navy}, #2c55c7)`
-    : role === 'admin'
-      ? `linear-gradient(135deg, ${BRAND.orange}, ${BRAND.red})`
-      : `linear-gradient(135deg, ${BRAND.red}, ${BRAND.orange})`
+    : `linear-gradient(135deg, ${BRAND.red}, ${BRAND.orange})`
   const roleShadow = role === 'teacher'
     ? '0 10px 28px rgba(27,58,140,0.35)'
     : '0 10px 28px rgba(217,35,45,0.30)'
@@ -153,7 +155,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
             <p className="mt-1 text-xs text-gray-400">
               {step === 'choose'
                 ? 'Learning Management System'
-                : role === 'student' ? 'Student Portal' : role === 'teacher' ? 'Teacher Portal' : 'Admin Portal'}
+                : role === 'student' ? 'Student Portal' : 'Staff Portal'}
             </p>
           </div>
 
@@ -179,7 +181,7 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
               How would you like to sign in today?
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {/* Student */}
               <RoleCard
                 icon={<GraduationCap size={34} strokeWidth={1.4} />}
@@ -201,16 +203,6 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
                 accentColor="#2c55c7"
                 lightBg={BRAND.navyLight}
                 onClick={() => selectRole('teacher')}
-              />
-              <RoleCard
-                icon={<ShieldCheck size={34} strokeWidth={1.4} />}
-                label="Admin"
-                sublabel="Admin Portal"
-                description="Manage institute setup and access"
-                color={BRAND.orange}
-                accentColor={BRAND.red}
-                lightBg={BRAND.orangeLight}
-                onClick={() => selectRole('admin')}
               />
             </div>
 
@@ -244,10 +236,8 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
               <span className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold"
                 style={{ background: roleLightBg, color: roleColor }}>
                 {role === 'teacher'
-                  ? <><BookOpen size={13} strokeWidth={2} /> Teacher Sign In</>
-                  : role === 'admin'
-                    ? <><ShieldCheck size={13} strokeWidth={2} /> Admin Sign In</>
-                    : <><GraduationCap size={13} strokeWidth={2} /> Student Sign In</>}
+                  ? <><BookOpen size={13} strokeWidth={2} /> Staff Sign In</>
+                  : <><GraduationCap size={13} strokeWidth={2} /> Student Sign In</>}
               </span>
             </div>
 
@@ -258,13 +248,18 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
                 </p>
               )}
 
-              {/* Username */}
+              {/* Identifier (Username for students, Email for teachers/admin) */}
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-gray-600">Username or Email</label>
+                <label className="mb-1.5 block text-xs font-semibold text-gray-600">
+                  {role === 'student' ? 'Username' : 'Email'}
+                </label>
                 <input
                   ref={emailRef}
-                  type="text" value={email} onChange={(e) => setEmail(e.target.value)}
-                  required placeholder="username or you@siyowin.lk"
+                  type={role === 'student' ? 'text' : 'email'}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  placeholder={role === 'student' ? 'Enter your username' : 'you@siyowin.lk'}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-transparent focus:bg-white"
                   style={{ boxShadow: `0 0 0 0px ${roleRing}`, outline: 'none' }}
                   onFocus={(e) => { e.target.style.boxShadow = `0 0 0 3px ${roleRing}` }}
@@ -297,7 +292,12 @@ export default function LmsLoginModal({ isOpen, onClose }: LmsLoginModalProps) {
 
               {/* Remember me */}
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="remember" className="h-4 w-4 rounded"
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={rememberMe}
+                  onChange={(event) => setRememberMe(event.target.checked)}
+                  className="h-4 w-4 rounded"
                   style={{ accentColor: roleColor }} />
                 <label htmlFor="remember" className="text-xs text-gray-500 cursor-pointer">
                   Remember me on this device

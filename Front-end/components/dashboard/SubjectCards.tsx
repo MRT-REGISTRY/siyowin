@@ -19,7 +19,7 @@ export default function SubjectCards({ subjects, onSelectSubject, onViewAll }: P
   return (
     <section className="sd-subjects-section">
       <div className="sd-section-header">
-        <h2 className="sd-section-title">📚 Subject Performance</h2>
+        <h2 className="sd-section-title">View Subjects</h2>
         <button className="sd-view-all-btn" type="button" onClick={onViewAll}>
           View All <ArrowRight size={13} />
         </button>

@@ -169,9 +169,9 @@ export default function TeachersPage() {
         )}
       </section>
 
-      {selectedTeacher ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        {selectedTeacher ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg md:max-w-3xl max-h-[90vh] overflow-auto rounded-3xl bg-white shadow-2xl">
             <button
               type="button"
               onClick={() => setSelectedTeacher(null)}
@@ -180,10 +180,9 @@ export default function TeachersPage() {
             >
               <X className="h-5 w-5" />
             </button>
-
-            <div className="flex flex-col gap-6 p-6 md:flex-row md:items-start md:p-8">
+            <div className="flex flex-col gap-6 p-4 md:flex-row md:items-start md:p-8">
               <div
-                className="relative mx-auto h-48 w-48 flex-shrink-0 overflow-hidden rounded-3xl shadow-lg md:mx-0 md:h-56 md:w-56"
+                className="relative mx-auto h-40 w-40 sm:h-48 sm:w-48 flex-shrink-0 overflow-hidden rounded-3xl shadow-lg md:mx-0 md:h-56 md:w-56"
                 style={{ backgroundColor: selectedTeacher.photoBg }}
               >
                 {selectedTeacher.photo ? (
@@ -216,8 +215,8 @@ export default function TeachersPage() {
                 </div>
 
                 <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{isSinhala ? "ගුරු පැතිකඩ" : "Tutor Profile"}</p>
-                <h3 className="mt-1 text-3xl font-extrabold text-slate-900">{toSinhalaTeacherName(selectedTeacher.name, isSinhala)}</h3>
-                <h2 className="mt-4 text-3xl font-extrabold text-slate-900">{toSinhalaSubject(selectedTeacher.subject, isSinhala)}</h2>
+                <h3 className="mt-1 text-2xl md:text-3xl font-extrabold text-slate-900">{toSinhalaTeacherName(selectedTeacher.name, isSinhala)}</h3>
+                <h2 className="mt-3 text-xl md:mt-4 md:text-2xl font-extrabold text-slate-900">{toSinhalaSubject(selectedTeacher.subject, isSinhala)}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {isSinhala
                     ? `${toSinhalaTeacherName(selectedTeacher.name, true)} විසින් ${toSinhalaSubject(selectedTeacher.subject, true)} සඳහා සැලසුම්ගත මඟපෙන්වීම ලබා දෙයි.`

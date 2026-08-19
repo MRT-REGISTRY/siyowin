@@ -13,8 +13,8 @@ type HomeworkItem = {
 
 export default function HomeworkSection({ homework }: { homework: HomeworkItem[] }) {
   const visibleHomework = homework.slice(0, 6);
-  const done = visibleHomework.filter((h) => h.status === 'completed').length;
-  const total = visibleHomework.length;
+  const done = homework.filter((item) => item.status === 'completed').length;
+  const total = homework.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
@@ -22,7 +22,7 @@ export default function HomeworkSection({ homework }: { homework: HomeworkItem[]
       <div className="sd-section-header">
         <div>
           <h2 className="sd-section-title">Homework</h2>
-          <p className="sd-section-sub">{done} of {total} tasks completed</p>
+          <p className="sd-section-sub">{total > 0 ? `${done}/${total} completed` : 'No homeworks at the moment'}</p>
         </div>
         <div className="sd-hw-ring-wrap">
           <svg viewBox="0 0 36 36" className="sd-hw-ring">
@@ -43,34 +43,26 @@ export default function HomeworkSection({ homework }: { homework: HomeworkItem[]
         </div>
       </div>
 
-      <ul className="sd-hw-list">
-        {visibleHomework.map((hw) => {
-          const isDone = hw.status === 'completed';
-
-          return (
-            <li key={hw.id} className={`sd-hw-item ${isDone ? 'sd-hw-done' : ''}`}>
-              <div className="sd-hw-status-icon">
-                {isDone ? (
-                  <CheckCircle2 size={18} className="sd-hw-check" />
-                ) : (
-                  <Circle size={18} className="sd-hw-pending-icon" />
-                )}
-              </div>
-              <div className="sd-hw-body">
-                <div className="sd-hw-top-row">
-                  <span className="sd-hw-dot" style={{ backgroundColor: hw.color ?? '#9CA3AF' }} />
-                  <span className="sd-hw-subject">{hw.subjectName}</span>
-                  <span className={`sd-hw-badge ${isDone ? 'sd-badge-done' : 'sd-badge-pending'}`}>
-                    {isDone ? 'Completed' : 'Not Completed'}
-                  </span>
+      {visibleHomework.length > 0 ? (
+        <div className="space-y-3">
+          {visibleHomework.map((item) => {
+            const isDone = item.status === 'completed';
+            return (
+              <div key={item.id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3">
+                {isDone ? <CheckCircle2 size={18} className="mt-0.5 text-emerald-600" /> : <Circle size={18} className="mt-0.5 text-slate-400" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-800">{item.title}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    {item.subjectName}
+                  </p>
                 </div>
-                <p className={`sd-hw-task ${isDone ? 'sd-hw-task-done' : ''}`}>{hw.title}</p>
               </div>
-              <span className="sd-hw-due">Due {hw.dueDate}</span>
-            </li>
-          );
-        })}
-      </ul>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="sd-hw-empty">No homeworks at the moment</div>
+      )}
     </section>
   );
 }

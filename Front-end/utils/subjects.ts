@@ -32,6 +32,7 @@ export const normalizeSubject = (
     title: string;
     dueDate: string;
     completedDate?: string;
+    createdAt?: string | null;
     status: 'completed' | 'pending';
     color?: string;
   }> = [],
@@ -85,6 +86,7 @@ export const normalizeSubjects = (
     title: string;
     dueDate: string;
     completedDate?: string;
+    createdAt?: string | null;
     status: 'completed' | 'pending';
     color?: string;
   }> = [],

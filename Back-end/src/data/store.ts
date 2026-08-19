@@ -10,7 +10,7 @@ import {
   teachers,
   users,
 } from './seed.js';
-import { AdminStudent, AdminStudentMark, AdminTeacher, AuthUser, DashboardOverview, LeaderboardEntry, StudentEnrollment } from '../types.js';
+import { AdminStudent, AdminStudentMark, AdminTeacher, AuthUser, DashboardOverview, LeaderboardEntry, StudentEnrollment, SubjectModule } from '../types.js';
 import { buildMarkKey, normalizeSearchText } from '../utils/marks.js';
 import { createId } from '../utils/ids.js';
 
@@ -26,6 +26,8 @@ export const store = {
   examTypes,
   csvColumns,
   studentEnrollments: [] as StudentEnrollment[],
+  subjectModules: [] as SubjectModule[],
+  homeworkAssignments: [] as Array<{ id: string; classId: string; title: string; dueDate: string; records: Array<{ studentId: string; isDone: boolean; updatedAt: string }> }>,
 };
 
 export const publicUser = (user: AuthUser): AuthUser => ({
@@ -45,6 +47,9 @@ export const findUserByEmail = (email: string) =>
     return user.email.toLowerCase() === normalized || user.username.toLowerCase() === normalized;
   });
 
+export const findUserByUsername = (username: string) =>
+  store.users.find((user) => user.username.toLowerCase() === username.trim().toLowerCase());
+
 export const findUserById = (id: string) => store.users.find((user) => user.id === id);
 
 export const getStudentProfile = (studentId?: string) => {
@@ -58,6 +63,10 @@ export const getStudentProfile = (studentId?: string) => {
     index: student.index,
     grade: student.grade,
     classId: student.classId,
+    address: student.address,
+    school: student.school,
+    parentName: student.parentName,
+    parentPhone: student.parentPhone,
     avatar: student.name.charAt(0).toUpperCase(),
   };
 };
@@ -141,6 +150,8 @@ export const createStudent = (input: Omit<AdminStudent, 'id' | 'marks' | 'grade'
     name: input.name,
     index: input.index,
     dateOfBirth: input.dateOfBirth,
+    address: input.address,
+    school: input.school,
     grade: classItem?.grade ?? input.grade ?? 'Unassigned',
     classId: input.classId,
     enrollments: [],

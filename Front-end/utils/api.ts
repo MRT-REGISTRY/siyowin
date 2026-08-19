@@ -42,7 +42,7 @@ export type LoginResponse = {
   };
 };
 
-export const login = (input: { email: string; password: string; role?: LoginRole }) =>
+export const login = (input: { email?: string; username?: string; password: string; role?: LoginRole }) =>
   apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
@@ -50,13 +50,13 @@ export const login = (input: { email: string; password: string; role?: LoginRole
 
 export const getStoredToken = () => {
   if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem('siyowin_token');
+  return window.localStorage.getItem('siyowin_token') ?? window.sessionStorage.getItem('siyowin_token');
 };
 
 export const getStoredUser = (): LoginResponse['user'] | null => {
   if (typeof window === 'undefined') return null;
 
-  const rawUser = window.localStorage.getItem('siyowin_user');
+  const rawUser = window.localStorage.getItem('siyowin_user') ?? window.sessionStorage.getItem('siyowin_user');
   if (!rawUser) return null;
 
   try {
@@ -66,10 +66,26 @@ export const getStoredUser = (): LoginResponse['user'] | null => {
   }
 };
 
+export const storeSession = (session: LoginResponse, remember: boolean) => {
+  if (typeof window === 'undefined') return;
+
+  const persistentStorage = window.localStorage;
+  const temporaryStorage = window.sessionStorage;
+  const targetStorage = remember ? persistentStorage : temporaryStorage;
+  const staleStorage = remember ? temporaryStorage : persistentStorage;
+
+  staleStorage.removeItem('siyowin_token');
+  staleStorage.removeItem('siyowin_user');
+  targetStorage.setItem('siyowin_token', session.token);
+  targetStorage.setItem('siyowin_user', JSON.stringify(session.user));
+};
+
 export const clearSession = () => {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem('siyowin_token');
   window.localStorage.removeItem('siyowin_user');
+  window.sessionStorage.removeItem('siyowin_token');
+  window.sessionStorage.removeItem('siyowin_user');
 };
 
 export const getDashboardPathForRole = (role?: LoginRole) => {

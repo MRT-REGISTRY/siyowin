@@ -12,7 +12,43 @@ export type SubjectHomeworkItem = {
   title: string;
   dueDate: string;
   completedDate?: string;
+  createdAt?: string | null;
   status: 'completed' | 'pending';
+};
+
+export type SubjectModuleItemType = 'mark' | 'link' | 'text' | 'document' | 'video';
+
+export type SubjectModuleItem =
+  | {
+      id: string;
+      title: string;
+      type: 'mark';
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    }
+  | {
+      id: string;
+      title: string;
+      type: 'link' | 'document' | 'video';
+      href: string;
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    }
+  | {
+      id: string;
+      title: string;
+      type: 'text';
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    };
+
+export type ApiSubjectModule = {
+  id: string;
+  title: string;
+  items: SubjectModuleItem[];
 };
 
 export type SubjectRecord = {
@@ -109,6 +145,10 @@ export type StudentProfile = {
   grade: string;
   classId: string;
   email?: string;
+  address?: string;
+  school?: string;
+  parentName?: string;
+  parentPhone?: string;
   term: string;
   year: number;
   avatar: string;

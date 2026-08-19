@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { KeyRound, Plus, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck, Trash2, UserPlus, Users, X, Crown } from 'lucide-react';
 
 import { apiDelete, apiGet, apiPatch, apiPost, getStoredUser } from '@/utils/api';
 import { AdminClassOption, AdminRole, AdminStudent, AdminStudentClassOption, AdminTeacher, RegisteredUser, TeacherAssignment } from '@/types';
@@ -24,6 +24,19 @@ const emptyAssignment: TeacherAssignment = {
 };
 
 const makePassword = () => `Siyo${Math.floor(100000 + Math.random() * 900000)}`;
+const buildStudentUsername = (name: string, dateOfBirth: string) => {
+  const normalizedName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  if (!normalizedName) return '';
+  if (!dateOfBirth) return normalizedName;
+
+  const parsedDate = new Date(dateOfBirth);
+  if (Number.isNaN(parsedDate.getTime())) return normalizedName;
+
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+
+  return `${normalizedName}${month}${day}`;
+};
 
 export default function StudentTeacherPage({ onNotice }: Props) {
   const [role, setRole] = useState<AdminRole>('admin');
@@ -52,7 +65,7 @@ export default function StudentTeacherPage({ onNotice }: Props) {
   const [studentName, setStudentName] = useState('');
   const [studentIndex, setStudentIndex] = useState('');
   const [studentUsername, setStudentUsername] = useState('');
-  const [studentPassword, setStudentPassword] = useState(makePassword);
+  const [studentPassword, setStudentPassword] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   const [studentDateOfBirth, setStudentDateOfBirth] = useState('');
   const [studentClassId, setStudentClassId] = useState('');
@@ -66,6 +79,16 @@ export default function StudentTeacherPage({ onNotice }: Props) {
   const [isAddingTeacher, setIsAddingTeacher] = useState(false);
   const [isEnrollingStudent, setIsEnrollingStudent] = useState(false);
   const [isLinkingClassTeacher, setIsLinkingClassTeacher] = useState(false);
+  const [expandedPanels, setExpandedPanels] = useState<{ classes: boolean; students: boolean; teachers: boolean; users: boolean }>({ classes: false, students: false, teachers: false, users: false });
+  const [modalOpen, setModalOpen] = useState<'classes' | 'students' | 'teachers' | 'users' | null>(null);
+  const [classesSearch, setClassesSearch] = useState('');
+  const [studentsSearch, setStudentsSearch] = useState('');
+  const [teachersSearch, setTeachersSearch] = useState('');
+  const [usersSearch, setUsersSearch] = useState('');
+
+  const togglePanelExpand = (panelName: 'classes' | 'students' | 'teachers' | 'users') => {
+    setModalOpen(panelName);
+  };
 
   const loadUsers = () => {
     apiGet<{ users: RegisteredUser[] }>('/admin/users')
@@ -116,10 +139,12 @@ export default function StudentTeacherPage({ onNotice }: Props) {
   }, []);
 
   useEffect(() => {
-    if (studentIndex.trim() && !studentUsername.trim()) {
-      setStudentUsername(studentIndex.trim().toLowerCase());
-    }
-  }, [studentIndex, studentUsername]);
+    setStudentUsername(buildStudentUsername(studentName, studentDateOfBirth));
+  }, [studentName, studentDateOfBirth]);
+
+  useEffect(() => {
+    setStudentPassword(studentIndex.trim());
+  }, [studentIndex]);
 
   useEffect(() => {
     setNewClassTeacherId((current) => current || teachers[0]?.id || '');
@@ -252,29 +277,48 @@ export default function StudentTeacherPage({ onNotice }: Props) {
 
   const addStudent = () => {
     if (isAddingStudent) return;
-    if (!studentName.trim() || !studentIndex.trim() || !studentUsername.trim() || !studentPassword.trim() || !studentClassId) {
-      onNotice?.({ message: 'Enter student details, class, username, and password.', variant: 'danger' });
+    if (!studentName.trim() || !studentIndex.trim() || !studentClassId) {
+      onNotice?.({ message: 'Enter student details, class, and index.', variant: 'danger' });
       return;
     }
 
-    setIsAddingStudent(true);
-    apiPost('/admin/students', {
+    const username = buildStudentUsername(studentName, studentDateOfBirth);
+    const password = studentIndex.trim();
+
+    if (!username || !password) {
+      onNotice?.({ message: 'Enter a valid student name and index to generate credentials.', variant: 'danger' });
+      return;
+    }
+
+    // client-side guard: ensure selected classId exists on the client
+    const classExists = classes.some((c) => c.id === studentClassId) || studentClassOptions.some((c) => c.id === studentClassId);
+    if (!classExists) {
+      onNotice?.({ message: 'Selected class is not available on the server. Reload classes via the meta endpoint and try again.', variant: 'danger' });
+      return;
+    }
+
+    const outgoing = {
       name: studentName.trim(),
       index: studentIndex.trim(),
-      username: studentUsername.trim(),
-      password: studentPassword.trim(),
       email: studentEmail.trim(),
       dateOfBirth: studentDateOfBirth,
       classId: studentClassId,
       parentName: parentName.trim(),
       parentPhone: parentPhone.trim(),
-    })
+    };
+
+    // helpful debug log for admin: shows exact payload being sent
+    // eslint-disable-next-line no-console
+    console.log('[admin/students] outgoing payload:', outgoing);
+
+    setIsAddingStudent(true);
+    apiPost('/admin/students', outgoing)
       .then(() => {
-        onNotice?.({ message: `Student ${studentName.trim()} added with login username ${studentUsername.trim()}.`, variant: 'success' });
+        onNotice?.({ message: `Student ${studentName.trim()} added with username ${username} and password ${password}.`, variant: 'success' });
         setStudentName('');
         setStudentIndex('');
         setStudentUsername('');
-        setStudentPassword(makePassword());
+        setStudentPassword('');
         setStudentEmail('');
         setStudentDateOfBirth('');
         setParentName('');
@@ -294,6 +338,26 @@ export default function StudentTeacherPage({ onNotice }: Props) {
         onNotice?.({ message: `Login ${user.username} deleted.`, variant: 'success' });
       })
       .catch((error) => onNotice?.({ message: error instanceof Error ? error.message : 'Login was not deleted.', variant: 'danger' }));
+  };
+
+  const promoteTeacherToAdmin = (user: RegisteredUser) => {
+    if (user.role !== 'teacher') {
+      onNotice?.({ message: 'Only teachers can be promoted to admin.', variant: 'danger' });
+      return;
+    }
+
+    if (!window.confirm(`Promote ${user.name} to admin? They will have full access to the admin panel.`)) return;
+
+    apiPatch(`/admin/users/${encodeURIComponent(user.id)}/promote`, {})
+      .then(() => {
+        setUsers((previous) =>
+          previous.map((item) =>
+            item.id === user.id ? { ...item, role: 'admin' } : item
+          )
+        );
+        onNotice?.({ message: `${user.name} has been promoted to admin.`, variant: 'success' });
+      })
+      .catch((error) => onNotice?.({ message: error instanceof Error ? error.message : 'Failed to promote user.', variant: 'danger' }));
   };
 
   const deleteStudent = (student: AdminStudent) => {
@@ -441,15 +505,15 @@ export default function StudentTeacherPage({ onNotice }: Props) {
             </section>
           </div>
 
-          <div className="grid gap-6 px-6 py-6 xl:grid-cols-[0.95fr_1.05fr] sm:px-8">
+          <div className="grid gap-6 px-6 py-6 xl:grid-cols-2 sm:px-8">
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <Header eyebrow="Student onboarding" title="Add student login" label="Admin" />
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <input value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="Student name" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
                 <input value={studentIndex} onChange={(event) => setStudentIndex(event.target.value)} placeholder="Student index" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
-                <input value={studentUsername} onChange={(event) => setStudentUsername(event.target.value)} placeholder="Issued username" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
-                <CredentialField value={studentPassword} onChange={setStudentPassword} onGenerate={() => setStudentPassword(makePassword())} />
+                <input value={studentUsername} readOnly placeholder="Issued username" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 placeholder:text-slate-400" />
+                <input value={studentPassword} readOnly placeholder="Issued password" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 placeholder:text-slate-400" />
                 <input value={studentEmail} onChange={(event) => setStudentEmail(event.target.value)} placeholder="Email optional" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 sm:col-span-2" />
                 <input type="date" value={studentDateOfBirth} onChange={(event) => setStudentDateOfBirth(event.target.value)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
                 <select value={studentClassId} onChange={(event) => setStudentClassId(event.target.value)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400">
@@ -509,10 +573,11 @@ export default function StudentTeacherPage({ onNotice }: Props) {
           </div>
 
           <section className="grid gap-6 px-6 pb-6 lg:grid-cols-3 sm:px-8">
-            <RecordPanel title="Classes / batches" emptyLabel="No classes found.">
-              {classes.map((classItem) => (
+            <RecordPanel title="Classes / batches" emptyLabel="No classes found." hasMore={classes.filter(c => c.label.toLowerCase().includes(classesSearch.toLowerCase())).length > 5} onViewAll={() => setModalOpen('classes')} searchValue={classesSearch} onSearchChange={setClassesSearch}>
+              {classes.filter(c => c.label.toLowerCase().includes(classesSearch.toLowerCase())).slice(0, 5).map((classItem, index) => (
                 <RecordRow
                   key={classItem.id}
+                  number={index + 1}
                   title={classItem.label}
                   detail={`${classItem.subjectName ?? 'Subject not set'} - ${classItem.medium} medium`}
                   onDelete={() => deleteClass(classItem)}
@@ -520,12 +585,13 @@ export default function StudentTeacherPage({ onNotice }: Props) {
               ))}
             </RecordPanel>
 
-            <RecordPanel title="Student records" emptyLabel="No students found.">
-              {students.map((student) => {
+            <RecordPanel title="Student records" emptyLabel="No students found." hasMore={students.filter(s => s.name.toLowerCase().includes(studentsSearch.toLowerCase()) || s.index.toLowerCase().includes(studentsSearch.toLowerCase())).length > 5} onViewAll={() => setModalOpen('students')} searchValue={studentsSearch} onSearchChange={setStudentsSearch}>
+              {students.filter(s => s.name.toLowerCase().includes(studentsSearch.toLowerCase()) || s.index.toLowerCase().includes(studentsSearch.toLowerCase())).slice(0, 5).map((student, index) => {
                 const classItem = classes.find((item) => item.id === student.classId);
                 return (
                   <RecordRow
                     key={student.id}
+                    number={index + 1}
                     title={student.name}
                     detail={`${student.index} - ${classItem?.label ?? student.grade}`}
                     onDelete={() => deleteStudent(student)}
@@ -534,10 +600,11 @@ export default function StudentTeacherPage({ onNotice }: Props) {
               })}
             </RecordPanel>
 
-            <RecordPanel title="Teacher records" emptyLabel="No teachers found.">
-              {teachers.map((teacher) => (
+            <RecordPanel title="Teacher records" emptyLabel="No teachers found." hasMore={teachers.filter(t => t.name.toLowerCase().includes(teachersSearch.toLowerCase()) || t.email.toLowerCase().includes(teachersSearch.toLowerCase())).length > 5} onViewAll={() => setModalOpen('teachers')} searchValue={teachersSearch} onSearchChange={setTeachersSearch}>
+              {teachers.filter(t => t.name.toLowerCase().includes(teachersSearch.toLowerCase()) || t.email.toLowerCase().includes(teachersSearch.toLowerCase())).slice(0, 5).map((teacher, index) => (
                 <RecordRow
                   key={teacher.id}
+                  number={index + 1}
                   title={teacher.name}
                   detail={teacher.assignments.map((assignment) => `${assignment.subject} ${assignment.grade}`).join(', ') || teacher.email}
                   onDelete={() => deleteTeacher(teacher)}
@@ -550,6 +617,9 @@ export default function StudentTeacherPage({ onNotice }: Props) {
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-xl font-bold text-slate-900">All registered logins</h2>
+              </div>
+              <div className="mb-4 flex gap-3">
+                <input type="text" value={usersSearch} onChange={(e) => setUsersSearch(e.target.value)} placeholder="Search by name, username, or email..." className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -564,7 +634,7 @@ export default function StudentTeacherPage({ onNotice }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => (
+                    {users.filter(u => u.name.toLowerCase().includes(usersSearch.toLowerCase()) || u.username.toLowerCase().includes(usersSearch.toLowerCase()) || u.email.toLowerCase().includes(usersSearch.toLowerCase())).slice(0, 10).map((user) => (
                       <tr key={user.id} className="border-t border-slate-100">
                         <td className="px-4 py-3 font-semibold text-slate-900">{user.name}</td>
                         <td className="px-4 py-3 text-slate-700">{user.username}</td>
@@ -590,8 +660,173 @@ export default function StudentTeacherPage({ onNotice }: Props) {
                   </tbody>
                 </table>
               </div>
+              {users.length > 10 && (
+                <div className="border-t border-slate-200 px-5 py-4">
+                  <button type="button" onClick={() => setModalOpen('users')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                    See all
+                  </button>
+                </div>
+              )}
             </div>
           </section>
+
+          {modalOpen === 'classes' && (
+            <RecordsModal title="All Classes / batches" onClose={() => setModalOpen(null)}>
+              <div className="border-b border-slate-200 p-4">
+                <input type="text" value={classesSearch} onChange={(e) => setClassesSearch(e.target.value)} placeholder="Search classes..." className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 text-xs uppercase tracking-[0.15em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">#</th>
+                    <th className="px-4 py-3">Class</th>
+                    <th className="px-4 py-3">Subject</th>
+                    <th className="px-4 py-3">Medium</th>
+                    <th className="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classes.filter(c => c.label.toLowerCase().includes(classesSearch.toLowerCase())).map((classItem, index) => (
+                    <tr key={classItem.id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{classItem.label}</td>
+                      <td className="px-4 py-3 text-slate-700">{classItem.subjectName ?? 'Subject not set'}</td>
+                      <td className="px-4 py-3 text-slate-600">{classItem.medium} medium</td>
+                      <td className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => deleteClass(classItem)} className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete class ${classItem.label}`}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </RecordsModal>
+          )}
+
+          {modalOpen === 'students' && (
+            <RecordsModal title="All Student Records" onClose={() => setModalOpen(null)}>
+              <div className="border-b border-slate-200 p-4">
+                <input type="text" value={studentsSearch} onChange={(e) => setStudentsSearch(e.target.value)} placeholder="Search by name or index..." className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 text-xs uppercase tracking-[0.15em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">#</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Index</th>
+                    <th className="px-4 py-3">Class</th>
+                    <th className="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.filter(s => s.name.toLowerCase().includes(studentsSearch.toLowerCase()) || s.index.toLowerCase().includes(studentsSearch.toLowerCase())).map((student, index) => {
+                    const classItem = classes.find((item) => item.id === student.classId);
+                    return (
+                      <tr key={student.id} className="border-t border-slate-100">
+                        <td className="px-4 py-3 font-semibold text-slate-900">{index + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{student.name}</td>
+                        <td className="px-4 py-3 text-slate-700">{student.index}</td>
+                        <td className="px-4 py-3 text-slate-600">{classItem?.label ?? student.grade}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button type="button" onClick={() => deleteStudent(student)} className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete student ${student.name}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </RecordsModal>
+          )}
+
+          {modalOpen === 'teachers' && (
+            <RecordsModal title="All Teacher Records" onClose={() => setModalOpen(null)}>
+              <div className="border-b border-slate-200 p-4">
+                <input type="text" value={teachersSearch} onChange={(e) => setTeachersSearch(e.target.value)} placeholder="Search by name or email..." className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 text-xs uppercase tracking-[0.15em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">#</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Assignments</th>
+                    <th className="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teachers.filter(t => t.name.toLowerCase().includes(teachersSearch.toLowerCase()) || t.email.toLowerCase().includes(teachersSearch.toLowerCase())).map((teacher, index) => (
+                    <tr key={teacher.id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{teacher.name}</td>
+                      <td className="px-4 py-3 text-slate-700">{teacher.email}</td>
+                      <td className="px-4 py-3 text-slate-600">{teacher.assignments.map((assignment) => `${assignment.subject} ${assignment.grade}`).join(', ') || 'No assignments'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => deleteTeacher(teacher)} className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete teacher ${teacher.name}`}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </RecordsModal>
+          )}
+
+          {modalOpen === 'users' && (
+            <RecordsModal title="All Registered Logins" onClose={() => setModalOpen(null)}>
+              <div className="border-b border-slate-200 p-4">
+                <input type="text" value={usersSearch} onChange={(e) => setUsersSearch(e.target.value)} placeholder="Search by name, username, or email..." className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400" />
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 text-xs uppercase tracking-[0.15em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">#</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.filter(u => u.name.toLowerCase().includes(usersSearch.toLowerCase()) || u.username.toLowerCase().includes(usersSearch.toLowerCase()) || u.email.toLowerCase().includes(usersSearch.toLowerCase())).map((user, index) => (
+                    <tr key={user.id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{user.name}</td>
+                      <td className="px-4 py-3 text-slate-700">{user.username}</td>
+                      <td className="px-4 py-3 capitalize text-slate-600">{user.role.replace('-', ' ')}</td>
+                      <td className="px-4 py-3 text-slate-600">{user.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${user.isActive === false ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {user.isActive === false ? 'Inactive' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-2 flex items-center justify-end">
+                        {user.role === 'teacher' && (
+                          <button
+                            type="button"
+                            onClick={() => promoteTeacherToAdmin(user)}
+                            className="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 transition hover:bg-amber-100"
+                            aria-label={`Promote ${user.name} to admin`}
+                            title="Promote to admin"
+                          >
+                            <Crown className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => deleteUser(user)} className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete login ${user.username}`}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </RecordsModal>
+          )}
         </section>
       </div>
     </div>
@@ -607,25 +842,38 @@ function Summary({ label, value }: { label: string; value: number }) {
   );
 }
 
-function RecordPanel({ title, emptyLabel, children }: { title: string; emptyLabel: string; children: ReactNode }) {
+function RecordPanel({ title, emptyLabel, children, hasMore, onViewAll, searchValue, onSearchChange }: { title: string; emptyLabel: string; children: ReactNode; hasMore: boolean; onViewAll?: () => void; searchValue?: string; onSearchChange?: (value: string) => void }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-bold text-slate-900">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-slate-900">{title}</h2>
+        {onSearchChange && (
+          <input type="text" value={searchValue || ''} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search..." className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400" />
+        )}
+      </div>
       <div className="mt-4 space-y-3">
         {items.length > 0 ? items : <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">{emptyLabel}</p>}
       </div>
+      {hasMore && onViewAll && (
+        <button type="button" onClick={onViewAll} className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+          See all
+        </button>
+      )}
     </div>
   );
 }
 
-function RecordRow({ title, detail, onDelete }: { title: string; detail: string; onDelete: () => void }) {
+function RecordRow({ number, title, detail, onDelete }: { number: number; title: string; detail: string; onDelete: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
-        <p className="mt-1 truncate text-xs text-slate-500">{detail}</p>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">{number}</span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
+          <p className="mt-1 truncate text-xs text-slate-500">{detail}</p>
+        </div>
       </div>
       <button type="button" onClick={onDelete} className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 transition hover:bg-rose-100" aria-label={`Delete ${title}`}>
         <Trash2 className="h-4 w-4" />
@@ -657,3 +905,20 @@ function CredentialField({ value, onChange, onGenerate }: { value: string; onCha
   );
 }
 
+function RecordsModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-6xl max-h-[90vh] overflow-auto rounded-3xl border border-slate-200 bg-white shadow-lg">
+        <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <button type="button" onClick={onClose} className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition hover:bg-slate-100" aria-label="Close modal">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -102,7 +102,7 @@ export default function DashboardSidebar({
         <div className="sd-sidebar-footer-info">
           <p className="sd-sidebar-footer-name">{profile?.name ?? 'Student'}</p>
           <p className="sd-sidebar-footer-role">
-            {profile ? `${profile.grade} - ${profile.classId.toUpperCase()}` : 'Student profile'}
+            {(profile as any)?.role ? (profile as any).role : profile ? `${profile.grade} - ${profile.classId.toUpperCase()}` : 'Student profile'}
           </p>
         </div>
       </div>

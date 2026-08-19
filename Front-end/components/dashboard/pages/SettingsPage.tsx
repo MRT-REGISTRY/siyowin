@@ -1,27 +1,51 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, ChevronRight, Globe, Lock, Palette, ShieldCheck, User } from 'lucide-react';
+import { ChevronRight, Globe, Lock, Palette, ShieldCheck, User } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { StudentProfile } from '@/types';
 import { useLanguage } from '@/components/LanguageProvider';
+import { apiPatch } from '@/utils/api';
 
 const SECTIONS = [
-  { id: 'profile', label: 'Profile', sinhalaLabel: 'පැතිකඩ', icon: User },
-  { id: 'notif', label: 'Notifications', sinhalaLabel: 'දැනුම්දීම්', icon: Bell },
-  { id: 'security', label: 'Security', sinhalaLabel: 'ආරක්ෂාව', icon: Lock },
-  { id: 'appear', label: 'Appearance', sinhalaLabel: 'පෙනුම', icon: Palette },
-  { id: 'language', label: 'Language', sinhalaLabel: 'භාෂාව', icon: Globe },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'security', label: 'Security', icon: Lock },
+  { id: 'appear', label: 'Appearance', icon: Palette },
+  { id: 'language', label: 'Language', icon: Globe },
 ];
 
-export default function SettingsPage({ profile }: { profile: StudentProfile | null }) {
+const THEME_OPTIONS = ['Light', 'Dark', 'System'];
+
+type ProfileForm = {
+  name: string;
+  address: string;
+  school: string;
+  parentName: string;
+  parentPhone: string;
+};
+
+export default function SettingsPage({
+  profile,
+  onProfileUpdate,
+}: {
+  profile: StudentProfile | null;
+  onProfileUpdate?: (profile: StudentProfile) => void;
+}) {
   const { isSinhala, toggleLanguage } = useLanguage();
+  const { theme: activeTheme, setTheme: setAppTheme } = useTheme();
   const [activeSection, setActiveSection] = useState('profile');
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [pushNotif, setPushNotif] = useState(true);
-  const [hwReminder, setHwReminder] = useState(true);
   const [theme, setTheme] = useState('Light');
   const [timezone, setTimezone] = useState('Asia/Colombo (UTC+5:30)');
-  const [saved, setSaved] = useState(false);
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    name: '',
+    address: '',
+    school: '',
+    parentName: '',
+    parentPhone: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     const rawPreferences = window.localStorage.getItem('student-dashboard-preferences');
@@ -29,58 +53,113 @@ export default function SettingsPage({ profile }: { profile: StudentProfile | nu
 
     try {
       const preferences = JSON.parse(rawPreferences) as {
-        emailNotif?: boolean;
-        pushNotif?: boolean;
-        hwReminder?: boolean;
         theme?: string;
         timezone?: string;
       };
-      setEmailNotif(preferences.emailNotif ?? true);
-      setPushNotif(preferences.pushNotif ?? true);
-      setHwReminder(preferences.hwReminder ?? true);
-      setTheme(preferences.theme ?? 'Light');
       setTimezone(preferences.timezone ?? 'Asia/Colombo (UTC+5:30)');
     } catch {
       window.localStorage.removeItem('student-dashboard-preferences');
     }
   }, []);
 
-  const handlePreferenceSave = () => {
+  useEffect(() => {
+    if (!activeTheme) return;
+    setTheme(activeTheme.charAt(0).toUpperCase() + activeTheme.slice(1));
+  }, [activeTheme]);
+
+  useEffect(() => {
+    setProfileForm({
+      name: profile?.name ?? '',
+      address: profile?.address ?? '',
+      school: profile?.school ?? '',
+      parentName: profile?.parentName ?? '',
+      parentPhone: profile?.parentPhone ?? '',
+    });
+    setProfileMessage('');
+    setProfileError('');
+  }, [profile]);
+
+  const savePreferences = (nextTimezone = timezone) => {
     window.localStorage.setItem('student-dashboard-preferences', JSON.stringify({
-      emailNotif,
-      pushNotif,
-      hwReminder,
-      theme,
-      timezone,
+      timezone: nextTimezone,
     }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleThemeChange = (nextTheme: string) => {
+    setTheme(nextTheme);
+    setAppTheme(nextTheme.toLowerCase());
+  };
+
+  const handleTimezoneChange = (nextTimezone: string) => {
+    setTimezone(nextTimezone);
+    savePreferences(nextTimezone);
+  };
+
+  const handleProfileChange = (field: keyof ProfileForm, value: string) => {
+    setProfileForm((current) => ({ ...current, [field]: value }));
+    setProfileMessage('');
+    setProfileError('');
+  };
+
+  const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = profileForm.name.trim();
+    if (!name) {
+      setProfileError('Full name is required.');
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      const response = await apiPatch<{ profile: StudentProfile }>('/dashboard/student/profile', {
+        name,
+        address: profileForm.address,
+        school: profileForm.school,
+        parentName: profileForm.parentName,
+        parentPhone: profileForm.parentPhone,
+      });
+      onProfileUpdate?.(response.profile);
+      setProfileForm({
+        name: response.profile.name ?? '',
+        address: response.profile.address ?? '',
+        school: response.profile.school ?? '',
+        parentName: response.profile.parentName ?? '',
+        parentPhone: response.profile.parentPhone ?? '',
+      });
+      setProfileMessage('Profile updated.');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Unable to update profile.');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   return (
     <div className="sdp-wrap">
       <div className="sdp-header">
         <div>
-          <h1 className="sdp-title">{isSinhala ? 'සැකසුම්' : 'Settings'}</h1>
+          <h1 className="sdp-title">{isSinhala ? 'Settings' : 'Settings'}</h1>
           <p className="sdp-sub">
-            {isSinhala ? 'ඔබගේ ගිණුම් තොරතුරු සහ මනාප බලන්න.' : 'View your account details and manage dashboard preferences.'}
+            {isSinhala ? 'Manage your account and dashboard preferences.' : 'Manage your account and dashboard preferences.'}
           </p>
         </div>
       </div>
 
       <div className="stg-layout">
         <nav className="stg-nav">
-          {SECTIONS.map((s) => {
-            const Icon = s.icon;
+          {SECTIONS.map((section) => {
+            const Icon = section.icon;
             return (
               <button
-                key={s.id}
-                className={`stg-nav-item ${activeSection === s.id ? 'stg-nav-active' : ''}`}
-                onClick={() => setActiveSection(s.id)}
+                key={section.id}
+                className={`stg-nav-item ${activeSection === section.id ? 'stg-nav-active' : ''}`}
+                onClick={() => setActiveSection(section.id)}
                 type="button"
               >
                 <Icon size={16} />
-                <span>{isSinhala ? s.sinhalaLabel : s.label}</span>
+                <span>{section.label}</span>
                 <ChevronRight size={14} className="stg-nav-arrow" />
               </button>
             );
@@ -90,67 +169,45 @@ export default function SettingsPage({ profile }: { profile: StudentProfile | nu
         <div className="stg-content sdp-card">
           {activeSection === 'profile' && (
             <div className="stg-section">
-              <h2 className="stg-section-title">{isSinhala ? 'පැතිකඩ තොරතුරු' : 'Profile Information'}</h2>
+              <h2 className="stg-section-title">Profile Information</h2>
               <p className="stg-section-sub">
-                {isSinhala
-                  ? 'සිසුන්ගේ පැතිකඩ තොරතුරු ආයතනය විසින් කළමනාකරණය කෙරේ. ඡායාරූප එකතු කිරීම අනාගත යාවත්කාලීනයකි.'
-                  : 'Student profile data is managed by the institute. Photo collection is planned for a future update.'}
+                Update your personal and parent contact details.
               </p>
 
-              <div className="stg-form-grid">
-                <ReadOnlyField label={isSinhala ? 'සම්පූර්ණ නම' : 'Full Name'} value={profile?.name ?? ''} />
-                <ReadOnlyField label={isSinhala ? 'ඊමේල් ලිපිනය' : 'Email Address'} value={profile?.email ?? ''} />
-                <ReadOnlyField label={isSinhala ? 'ශ්‍රේණිය' : 'Grade'} value={profile?.grade ?? ''} />
-                <ReadOnlyField label={isSinhala ? 'පන්තිය' : 'Class'} value={profile?.classId?.toUpperCase() ?? ''} />
-              </div>
-            </div>
-          )}
+              <form onSubmit={handleProfileSubmit}>
+                <div className="stg-form-grid">
+                  <EditableField label="Full Name" value={profileForm.name} onChange={(value) => handleProfileChange('name', value)} />
+                  <ReadOnlyField label="Email Address" value={profile?.email ?? ''} />
+                  <EditableField label="Address" value={profileForm.address} onChange={(value) => handleProfileChange('address', value)} full />
+                  <EditableField label="School" value={profileForm.school} onChange={(value) => handleProfileChange('school', value)} />
+                  <ReadOnlyField label="Grade" value={profile?.grade ?? ''} />
+                  <ReadOnlyField label="Class" value={profile?.classId?.toUpperCase() ?? ''} />
+                  <ReadOnlyField label="Index Number" value={profile?.index ?? ''} />
+                  <EditableField label="Parent Name" value={profileForm.parentName} onChange={(value) => handleProfileChange('parentName', value)} />
+                  <EditableField label="Parent Phone Number" value={profileForm.parentPhone} onChange={(value) => handleProfileChange('parentPhone', value)} />
+                </div>
 
-          {activeSection === 'notif' && (
-            <div className="stg-section">
-              <h2 className="stg-section-title">{isSinhala ? 'දැනුම්දීම්' : 'Notifications'}</h2>
-              <p className="stg-section-sub">{isSinhala ? 'ඔබට ලැබෙන දැනුම්දීම් තෝරන්න.' : 'Choose what alerts you receive.'}</p>
-              <div className="stg-toggle-list">
-                {[
-                  { label: isSinhala ? 'ඊමේල් දැනුම්දීම්' : 'Email Notifications', sub: isSinhala ? 'ඊමේල් මඟින් යාවත්කාලීන ලබාගන්න' : 'Receive updates via email', val: emailNotif, set: setEmailNotif },
-                  { label: isSinhala ? 'Push දැනුම්දීම්' : 'Push Notifications', sub: isSinhala ? 'Browser alerts ලබාගන්න' : 'Browser push alerts', val: pushNotif, set: setPushNotif },
-                  { label: isSinhala ? 'ගෙදර වැඩ මතක් කිරීම්' : 'Homework Reminders', sub: isSinhala ? 'අවසන් දිනයට පෙර මතක් කිරීම්' : 'Reminders before due dates', val: hwReminder, set: setHwReminder },
-                ].map((item) => (
-                  <div key={item.label} className="stg-toggle-row">
-                    <div>
-                      <p className="stg-toggle-label">{item.label}</p>
-                      <p className="stg-toggle-sub">{item.sub}</p>
-                    </div>
-                    <button
-                      className={`stg-toggle ${item.val ? 'stg-toggle-on' : ''}`}
-                      onClick={() => item.set(!item.val)}
-                      aria-label={item.label}
-                      type="button"
-                    >
-                      <span className="stg-toggle-thumb" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <SaveButton saved={saved} isSinhala={isSinhala} onClick={handlePreferenceSave} />
+                {profileError && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{profileError}</p>}
+                {profileMessage && <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{profileMessage}</p>}
+
+                <button type="submit" disabled={profileSaving} className="stg-save-btn disabled:cursor-not-allowed disabled:opacity-60">
+                  {profileSaving ? 'Saving...' : 'Update Profile'}
+                </button>
+              </form>
             </div>
           )}
 
           {activeSection === 'security' && (
             <div className="stg-section">
-              <h2 className="stg-section-title">{isSinhala ? 'ආරක්ෂාව' : 'Security'}</h2>
+              <h2 className="stg-section-title">Security</h2>
               <p className="stg-section-sub">
-                {isSinhala
-                  ? 'සිසුන්ට තමන්ගේ මුරපදය වෙනස් කළ නොහැක. මුරපද නැවත සැකසීම ආයතනයේ account admin විසින් කළමනාකරණය කරයි.'
-                  : 'Students cannot change their own password. Password resets are managed by the institute account admin.'}
+                Students cannot change their own password. Password resets are managed by the institute account admin.
               </p>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
                   <p className="text-sm leading-6 text-slate-700">
-                    {isSinhala
-                      ? 'Login ගැටළු හෝ password reset අවශ්‍ය නම් ආයතනය හෝ තාක්ෂණික සහාය කණ්ඩායම අමතන්න.'
-                      : 'For login issues or password reset requests, contact the institute or technical support team.'}
+                    For login issues or password reset requests, contact the institute or technical support team.
                   </p>
                 </div>
               </div>
@@ -159,45 +216,43 @@ export default function SettingsPage({ profile }: { profile: StudentProfile | nu
 
           {activeSection === 'appear' && (
             <div className="stg-section">
-              <h2 className="stg-section-title">{isSinhala ? 'පෙනුම' : 'Appearance'}</h2>
-              <p className="stg-section-sub">{isSinhala ? 'ඔබගේ dashboard පෙනුම තෝරන්න.' : 'Customize your dashboard look.'}</p>
+              <h2 className="stg-section-title">Appearance</h2>
+              <p className="stg-section-sub">Choose how the dashboard should look.</p>
               <div className="stg-appear-grid">
-                {['Light', 'Dark', 'System'].map((item) => (
+                {THEME_OPTIONS.map((item) => (
                   <button
                     key={item}
                     type="button"
-                    className={`stg-theme-card ${item === theme ? 'stg-theme-active' : ''}`}
-                    onClick={() => setTheme(item)}
+                    className={`stg-theme-card ${item.toLowerCase() === (activeTheme ?? theme.toLowerCase()) ? 'stg-theme-active' : ''}`}
+                    onClick={() => handleThemeChange(item)}
                   >
                     <div className={`stg-theme-preview stg-preview-${item.toLowerCase()}`} />
                     <span className="stg-theme-label">{item}</span>
                   </button>
                 ))}
               </div>
-              <SaveButton saved={saved} isSinhala={isSinhala} onClick={handlePreferenceSave} />
             </div>
           )}
 
           {activeSection === 'language' && (
             <div className="stg-section">
-              <h2 className="stg-section-title">{isSinhala ? 'භාෂාව සහ කලාපය' : 'Language & Region'}</h2>
-              <p className="stg-section-sub">{isSinhala ? 'ඔබගේ කැමති භාෂාව සහ කාල කලාපය තෝරන්න.' : 'Set your preferred language and timezone.'}</p>
+              <h2 className="stg-section-title">Language & Region</h2>
+              <p className="stg-section-sub">Set your preferred language and timezone.</p>
               <div className="stg-form-grid">
                 <div className="stg-field">
-                  <label className="stg-label">{isSinhala ? 'භාෂාව' : 'Language'}</label>
+                  <label className="stg-label">Language</label>
                   <button type="button" className="stg-input text-left" onClick={toggleLanguage}>
-                    {isSinhala ? 'සිංහල' : 'English'}
+                    {isSinhala ? 'Sinhala' : 'English'}
                   </button>
                 </div>
                 <div className="stg-field">
-                  <label className="stg-label">{isSinhala ? 'කාල කලාපය' : 'Timezone'}</label>
-                  <select className="stg-input" value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+                  <label className="stg-label">Timezone</label>
+                  <select className="stg-input" value={timezone} onChange={(event) => handleTimezoneChange(event.target.value)}>
                     <option>Asia/Colombo (UTC+5:30)</option>
                     <option>UTC</option>
                   </select>
                 </div>
               </div>
-              <SaveButton saved={saved} isSinhala={isSinhala} onClick={handlePreferenceSave} />
             </div>
           )}
         </div>
@@ -215,10 +270,21 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SaveButton({ saved, isSinhala, onClick }: { saved: boolean; isSinhala: boolean; onClick: () => void }) {
+function EditableField({
+  label,
+  value,
+  onChange,
+  full = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  full?: boolean;
+}) {
   return (
-    <button className="stg-save-btn" type="button" onClick={onClick}>
-      {saved ? (isSinhala ? 'සුරකින ලදී' : 'Saved') : (isSinhala ? 'සුරකින්න' : 'Save')}
-    </button>
+    <div className={`stg-field ${full ? 'stg-full' : ''}`}>
+      <label className="stg-label">{label}</label>
+      <input className="stg-input" value={value} onChange={(event) => onChange(event.target.value)} />
+    </div>
   );
 }

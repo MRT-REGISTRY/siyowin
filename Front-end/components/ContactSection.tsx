@@ -89,7 +89,7 @@ export default function ContactSection() {
               </a>
 
               <a
-                href="mailto:info@siyowin.lk"
+                href="mailto:siyowinkegalle@gmail.com"
                 className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-white hover:shadow-sm"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#D9232D] text-white">
@@ -97,7 +97,7 @@ export default function ContactSection() {
                 </span>
                 <span>
                   <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500">{isSinhala ? 'ඊමේල්' : 'Email'}</span>
-                  <span className="font-bold text-slate-900">info@siyowin.lk</span>
+                  <span className="font-bold text-slate-900">siyowinkegalle@gmail.com</span>
                 </span>
               </a>
 

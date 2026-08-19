@@ -11,6 +11,18 @@ export type AuthUser = {
   isActive?: boolean;
 };
 
+// Express Request augmentation — req.user and req.context are available on
+// every route handler without additional imports.
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+      context: import('./context/RequestContext.js').RequestContext;
+    }
+  }
+}
+
+
 export type SubjectHistoryItem = {
   label: string;
   date: string;
@@ -23,7 +35,43 @@ export type SubjectHomeworkItem = {
   title: string;
   dueDate: string;
   completedDate?: string;
+  createdAt?: string | null;
   status: 'completed' | 'pending';
+};
+
+export type SubjectModuleItemType = 'mark' | 'link' | 'text' | 'document' | 'video';
+
+export type SubjectModuleItem =
+  | {
+      id: string;
+      title: string;
+      type: 'mark';
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    }
+  | {
+      id: string;
+      title: string;
+      type: 'link' | 'document' | 'video';
+      href: string;
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    }
+  | {
+      id: string;
+      title: string;
+      type: 'text';
+      moduleId?: string;
+      classId?: string;
+      createdAt?: string | null;
+    };
+
+export type SubjectModule = {
+  id: string;
+  title: string;
+  items: SubjectModuleItem[];
 };
 
 export type SubjectRecord = {
@@ -113,6 +161,8 @@ export type AdminStudent = {
   name: string;
   index: string;
   dateOfBirth?: string;
+  address?: string;
+  school?: string;
   grade: string;
   classId: string;
   enrollments?: StudentEnrollment[];

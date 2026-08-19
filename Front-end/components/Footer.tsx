@@ -9,9 +9,6 @@ const quickLinks = [
   { label: 'About Us', sinhalaLabel: 'අප ගැන', href: '/#about' },
   { label: 'Teachers', sinhalaLabel: 'ගුරුවරු', href: '/#teachers' },
   { label: 'Timetable', sinhalaLabel: 'කාලසටහන්', href: '/#timetable' },
-  { label: 'Gallery', sinhalaLabel: 'ගැලරිය', href: '/#gallery' },
-  { label: 'News', sinhalaLabel: 'පුවත්', href: '/#news' },
-  { label: 'FAQ', sinhalaLabel: 'ප්‍රශ්න', href: '/#faq' },
   { label: 'Contact', sinhalaLabel: 'සම්බන්ධ වන්න', href: '/#contact' },
 ]
 
@@ -92,7 +89,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+          <div className="hidden sm:flex flex-col items-center text-center sm:items-start sm:text-left">
             <h4 className="mb-5 text-sm font-bold uppercase tracking-widest text-white">
               {isSinhala ? 'ඉක්මන් සබැඳි' : 'Quick Links'}
             </h4>
@@ -146,11 +143,11 @@ export default function Footer() {
                 </svg>
                 070 528 1466
               </a>
-              <a href="mailto:info@siyowin.lk" className="flex items-center justify-center gap-2 text-sm text-gray-400 transition-colors duration-200 hover:text-white sm:justify-start">
+              <a href="mailto:siyowinkegalle@gmail.com" className="flex items-center justify-center gap-2 text-sm text-gray-400 transition-colors duration-200 hover:text-white sm:justify-start">
                 <svg className="h-4 w-4 flex-shrink-0 text-[#F47920]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                info@siyowin.lk
+                siyowinkegalle@gmail.com
               </a>
             </div>
           </div>

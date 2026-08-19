@@ -346,7 +346,29 @@ export default function MarksPage() {
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <label className="space-y-2 text-sm text-slate-600">
                         <span>Mark</span>
-                        <input value={markValue} onChange={(event) => setMarkValue(event.target.value)} inputMode="numeric" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900" />
+                        <input 
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={markValue} 
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            if (val === '') {
+                              setMarkValue('');
+                              return;
+                            }
+                            const num = Number(val);
+                            if (num < 0) {
+                              setMarkValue('0');
+                            } else if (num > 100) {
+                              setMarkValue('100');
+                            } else {
+                              setMarkValue(val);
+                            }
+                          }} 
+                          inputMode="numeric" 
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900" 
+                        />
                       </label>
                       <label className="space-y-2 text-sm text-slate-600 sm:col-span-2">
                         <span>Note</span>
