@@ -162,7 +162,7 @@ export default function MarksSheetPortal() {
                       type="text"
                       value={username}
                       onChange={(event) => setUsername(event.target.value)}
-                      placeholder="e.g., A001"
+                      placeholder="e.g., 1234"
                       className="w-full bg-transparent text-base font-medium text-slate-900 outline-none placeholder:text-slate-400"
                     />
                   </div>
